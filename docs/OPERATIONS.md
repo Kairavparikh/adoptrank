@@ -3,13 +3,18 @@
 ## Runtime topology
 
 - `adoptrank.vercel.app`: Next.js UI and authenticated server-side proxy.
-- Ranking container: FastAPI, Qwen3 embedding/reranking, and the trained PyTorch heads.
-- PostgreSQL with pgvector: observations, code evidence, 1,024-dimensional Qwen code chunks, and HNSW indexes.
-- GitHub Actions: six-hour real-data collection/code refresh and weekly Qwen head retraining.
+- Modal L4 ranker: FastAPI, Qwen3 embedding/reranking, and the trained PyTorch heads.
+- Neon PostgreSQL with pgvector: observations, code evidence, 1,024-dimensional Qwen code chunks, and HNSW indexes.
+- Modal schedule: six-hour real GitHub/PyPI polling into Neon.
+- GitHub Actions: portable six-hour collection/code refresh and weekly Qwen head retraining when the repository is published.
 
 ## Required secrets
 
-The ranking host requires `RANKER_API_KEY`. Vercel requires the same `RANKER_API_KEY` plus `RANKER_API_URL`. Collection workflows require `DATABASE_URL`; their built-in `GITHUB_TOKEN` is used for public GitHub API capacity.
+The ranking host requires `RANKER_API_KEY`. Vercel requires the same
+`RANKER_API_KEY` plus `RANKER_API_URL`. Modal stores the Neon URL in the
+`adoptrank-database` secret and the read-only GitHub token in
+`adoptrank-github`. Collection workflows require `DATABASE_URL`; GitHub-hosted
+workflows can use their built-in `GITHUB_TOKEN`.
 
 Never expose these through a `NEXT_PUBLIC_` variable.
 
@@ -27,6 +32,22 @@ are documented in `deploy/README.md`.
 The deployment requires a Modal secret named `adoptrank-production` containing
 `RANKER_API_KEY`. The runtime has no Hugging Face token requirement because both
 models are public and downloaded into the image during its build.
+
+Current production endpoints:
+
+- Web and server-side proxy: `https://adoptrank.vercel.app`
+- Ranking API: `https://kairav-parikh01--adoptrank-ranker-ranking-api.modal.run`
+- PostgreSQL resource: Vercel Marketplace Neon resource `adoptrank-pgvector`
+
+The ranking endpoint is public at the network layer but `/v1/search` requires the
+private `x-adoptrank-key` shared only by Modal and Vercel. `/health` intentionally
+contains no secret or repository data and remains available for health checks.
+
+The collector schedule is `17 */6 * * *` UTC. Its first hosted verification run
+on 2026-08-07 persisted 246 real observations, grew the tracked catalog from 76
+to 246 repositories, and advanced the database watermark to
+`2026-08-07T05:00:41Z`. The production pgvector table contains 241 Qwen code
+chunks from the commit-pinned bootstrap corpus.
 
 ### Alternative: Hugging Face Docker Space
 

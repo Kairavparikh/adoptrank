@@ -19,6 +19,11 @@ checking it into a file:
 backend/.venv/bin/modal secret create adoptrank-production RANKER_API_KEY=<value>
 ```
 
+The scheduled collector uses two additional Modal secrets:
+
+- `adoptrank-database` with `DATABASE_URL` for the production Neon database.
+- `adoptrank-github` with a fine-grained, read-only `GITHUB_TOKEN`.
+
 ## Deploy
 
 ```bash
@@ -40,3 +45,19 @@ vercel --prod
 ```
 
 Never use `NEXT_PUBLIC_` for either value.
+
+## Polling and vector maintenance
+
+`collect_live_repositories` runs at minute 17 every six hours. It polls the real
+GitHub and PyPI APIs and writes a new point-in-time observation to Neon. Run and
+verify it manually with:
+
+```bash
+backend/.venv/bin/modal run deploy/modal_app.py::collect_live_repositories
+```
+
+Rebuild production code vectors on the same L4/Qwen stack used by inference:
+
+```bash
+backend/.venv/bin/modal run deploy/modal_app.py::index_production_vectors
+```

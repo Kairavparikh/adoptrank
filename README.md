@@ -41,8 +41,8 @@ npm run lint
 npm test
 ```
 
-The public Vercel deployment uses the preview corpus until the checked-in Modal
-GPU service is deployed and its URL is configured. The backend itself already
+The public deployment at <https://adoptrank.vercel.app> is connected to the
+checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also
 collects GitHub/PyPI data, writes point-in-time PostgreSQL observations, and
 produces reproducible PyTorch checkpoints.
 
