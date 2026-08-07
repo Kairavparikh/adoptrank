@@ -323,6 +323,14 @@ accuracy without seeing p-limit during optimization. These results pass the retr
 approve the product pivot: at least 30 controlled Claude A/B tasks must still demonstrate 30% repository-
 context reduction at comparable task success with a positive task-clustered confidence interval.
 
+An attempted 30-task Claude A/B on 2026-08-07 exhausted the provider credit after 16 valid pairs. Those
+valid pairs showed equal 25% hidden-contract success, 17.4% fewer total processed input tokens, 12.0%
+lower estimated cost, but 3.3% *more* repository context after counting the injected context pack. The
+95% repository-context reduction interval was -33.1% to +14.4%, retrieval recall was 75.4%, and context
+p95 latency was 24.7 seconds. This partial result is inconclusive and explicitly does not approve the
+pivot. The harness now excludes nonzero/provider-error executions from every metric and stops immediately
+on errors such as insufficient credit, preventing an incomplete paid run from appearing as a valid sample.
+
 ### Stage 2 — Retrieval accuracy
 
 - In progress: the live catalog contains 4,967 repositories and 18,812 observations; the first

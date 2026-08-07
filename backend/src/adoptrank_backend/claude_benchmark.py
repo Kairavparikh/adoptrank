@@ -109,6 +109,26 @@ def _parse_stream(output: str) -> tuple[dict, dict]:
     }
 
 
+def _provider_failure(completed: subprocess.CompletedProcess, payload: dict) -> str | None:
+    """Return a stable reason when Claude did not execute the requested task."""
+    result_text = str(payload.get("result") or "").strip()
+    stderr = str(completed.stderr or "").strip()
+    if completed.returncode != 0:
+        return result_text or stderr[-1000:] or f"Claude exited with code {completed.returncode}."
+    if payload.get("is_error"):
+        return result_text or "Claude returned an error result."
+    if not payload:
+        return stderr[-1000:] or "Claude returned no parseable result event."
+    return None
+
+
+def _valid_benchmark_run(run: dict) -> bool:
+    """Accept legacy reports only when the Claude process itself succeeded."""
+    if "benchmark_valid" in run:
+        return bool(run["benchmark_valid"])
+    return int(run.get("exit_code") or 0) == 0
+
+
 def _run_task_evaluator(root: Path, task: dict) -> tuple[bool | None, str]:
     command = task.get("test_command")
     if command:
@@ -208,6 +228,7 @@ def _run_condition(
         ]
         completed = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=1800)
         payload, trace = _parse_stream(completed.stdout)
+        provider_failure = _provider_failure(completed, payload)
         after = _file_hashes(root)
         after_text = _text_files(root)
         changed_files = sorted(
@@ -232,6 +253,8 @@ def _run_condition(
             "exit_code": completed.returncode,
             "claude_result": payload.get("result", ""),
             "claude_error": completed.stderr[-4000:],
+            "benchmark_valid": provider_failure is None,
+            "provider_failure": provider_failure,
             "changed_files": changed_files,
             "patches": patches,
             "expected_file_recall": (
@@ -261,6 +284,12 @@ def _summary(results: list[dict]) -> dict:
                     by_condition["adoptrank"],
                 )
             )
+    attempted_pairs = len(paired_results)
+    paired_results = [
+        (task_id, baseline, adoptrank)
+        for task_id, baseline, adoptrank in paired_results
+        if _valid_benchmark_run(baseline) and _valid_benchmark_run(adoptrank)
+    ]
     pairs = [(baseline, adoptrank) for _, baseline, adoptrank in paired_results]
     scored = [pair for pair in pairs if all(run["task_success"] is not None for run in pair)]
     scored_task_ids = {
@@ -347,6 +376,7 @@ def _summary(results: list[dict]) -> dict:
         ),
     }
     return {
+        "attempted_paired_tasks": attempted_pairs,
         "paired_tasks": len(pairs),
         "scored_tasks": len(scored),
         "unique_controlled_tasks": len(scored_task_ids),
@@ -379,6 +409,8 @@ def run_claude_benchmark(
     tasks = [json.loads(line) for line in tasks_path.read_text().splitlines() if line.strip()]
     selected_conditions = ["baseline", "adoptrank"] if condition == "both" else [condition]
     results = []
+    stopped_early = False
+    stop_reason = None
     if repetitions < 1 or repetitions > 5:
         raise ValueError("repetitions must be between 1 and 5")
     for task_index, task in enumerate(tasks[:max_tasks]):
@@ -386,8 +418,9 @@ def run_claude_benchmark(
             ordered_conditions = list(selected_conditions)
             if len(ordered_conditions) == 2 and (task_index + repetition) % 2:
                 ordered_conditions.reverse()
-            task_results = [
-                _run_condition(
+            task_results = []
+            for selected in ordered_conditions:
+                run = _run_condition(
                     task,
                     selected,
                     context_budget,
@@ -396,8 +429,11 @@ def run_claude_benchmark(
                     max_turns,
                     candidate_reranker,
                 )
-                for selected in ordered_conditions
-            ]
+                task_results.append(run)
+                if not run.get("benchmark_valid", True):
+                    stopped_early = True
+                    stop_reason = run.get("provider_failure") or "Claude provider failure."
+                    break
             results.append(
                 {
                     "task_id": task.get("task_id"),
@@ -406,6 +442,10 @@ def run_claude_benchmark(
                     "runs": task_results,
                 }
             )
+            if stopped_early:
+                break
+        if stopped_early:
+            break
     report = {
         "task_count": min(max_tasks, len(tasks)),
         "run_pair_count": len(results),
@@ -414,6 +454,8 @@ def run_claude_benchmark(
         "model": model,
         "context_model": context_model,
         "maximum_authorized_cost_usd": len(results) * len(selected_conditions) * max_budget_usd,
+        "stopped_early": stopped_early,
+        "stop_reason": stop_reason,
         "results": results,
         "summary": _summary(results),
         "warning": (
