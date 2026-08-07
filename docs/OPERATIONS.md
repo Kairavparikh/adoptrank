@@ -15,6 +15,21 @@ Never expose these through a `NEXT_PUBLIC_` variable.
 
 ## Deployment
 
+### Production: Modal serverless GPU
+
+The checked-in deployment definition is `deploy/modal_app.py`. It bakes both
+Qwen model snapshots, the trained PyTorch heads, repository corpus, and embedding
+cache into one image, serves the existing FastAPI app on an L4 GPU, permits one
+inference at a time per container, and scales idle containers to zero after five
+minutes. Modal setup, secret creation, deployment, and Vercel connection commands
+are documented in `deploy/README.md`.
+
+The deployment requires a Modal secret named `adoptrank-production` containing
+`RANKER_API_KEY`. The runtime has no Hugging Face token requirement because both
+models are public and downloaded into the image during its build.
+
+### Alternative: Hugging Face Docker Space
+
 The ranking service is a Docker Space-compatible bundle rooted at `backend/`. Its README contains the required Docker Space metadata, and the trained checkpoint, repository corpus, and embedding cache ship under `backend/artifacts/qwen/`.
 
 ```bash

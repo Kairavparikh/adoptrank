@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
       rankerUrl.searchParams.set("limit", "20");
       const response = await fetch(rankerUrl, {
         headers: process.env.RANKER_API_KEY ? { "x-adoptrank-key": process.env.RANKER_API_KEY } : {},
-        signal: AbortSignal.timeout(25_000),
+        // Leave five seconds for the proxy to serialize a response after a
+        // scale-to-zero GPU cold start. Warm requests normally finish much sooner.
+        signal: AbortSignal.timeout(55_000),
         cache: "no-store",
       });
       if (!response.ok) throw new Error(`ranker returned ${response.status}`);

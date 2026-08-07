@@ -41,7 +41,10 @@ npm run lint
 npm test
 ```
 
-The public Vercel deployment still uses the preview corpus until a hosted model-service URL is configured. The backend itself already collects GitHub/PyPI data, writes point-in-time PostgreSQL observations, and produces reproducible PyTorch checkpoints.
+The public Vercel deployment uses the preview corpus until the checked-in Modal
+GPU service is deployed and its URL is configured. The backend itself already
+collects GitHub/PyPI data, writes point-in-time PostgreSQL observations, and
+produces reproducible PyTorch checkpoints.
 
 ## Ranking backend
 
@@ -64,3 +67,6 @@ Configure the Vercel application to call a deployed model service with:
 RANKER_API_URL=https://your-ranker-service.example
 RANKER_API_KEY=...
 ```
+
+Production deployment and verification commands are in
+[`deploy/README.md`](deploy/README.md).

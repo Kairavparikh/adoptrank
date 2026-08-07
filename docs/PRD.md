@@ -170,9 +170,14 @@ The UI always displays a data watermark. Stale sources degrade independently rat
 - Streaming/event layer at scale: Redpanda/Kafka and Spark Structured Streaming.
 - Workflow orchestration: Airflow or Dagster.
 - Observability: OpenTelemetry, structured logs, metrics, and traces.
-- Packaging: Docker; Kubernetes is a scale milestone, not required for the first demo.
+- Serving: Modal scale-to-zero L4 GPU with both Qwen model snapshots and trained
+  artifacts baked into the image.
+- Packaging: Docker remains a portable fallback; Kubernetes is a scale milestone,
+  not required for the first demo.
 
-Vercel hosts the web application. The stateful PyTorch inference and ingestion services run as separate containers and are accessed through `RANKER_API_URL`.
+Vercel hosts the web application. Modal hosts the PyTorch/Qwen FastAPI inference
+service behind `RANKER_API_URL`; scheduled collection and training remain separate
+from request-time serving.
 
 ## 10. Core API
 
@@ -248,4 +253,4 @@ The response includes a model version, data watermark, and ranked results with d
 
 ## 14. Current implementation status
 
-M1–M3 are implemented: the Vercel UI, FastAPI service, six-hour real-data polling, commit-pinned Tree-sitter analysis, Qwen3/pgvector retrieval, InfoNCE and pairwise PyTorch training, multi-head scoring, safe CLI scanner, and VS Code integration are in the repository and locally verified. M4 has a real 76-repository/217-pair bootstrap and weekly retraining workflow, but still requires repeated temporal observations and a human relevance benchmark. The production Docker image is verified; public model-service deployment awaits a compute-enabled hosting entitlement, after which Vercel can be switched from its fallback path to the Qwen service through `RANKER_API_URL`.
+M1–M3 are implemented: the Vercel UI, FastAPI service, six-hour real-data polling, commit-pinned Tree-sitter analysis, Qwen3/pgvector retrieval, InfoNCE and pairwise PyTorch training, multi-head scoring, safe CLI scanner, and VS Code integration are in the repository and locally verified. M4 has a real 76-repository/217-pair bootstrap and weekly retraining workflow, but still requires repeated temporal observations and a human relevance benchmark. The production Docker image is verified, and a validated Modal L4 deployment definition is checked in; activating its public endpoint and connecting the Vercel environment are the remaining deployment operations.
