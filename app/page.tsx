@@ -215,6 +215,7 @@ export default function Home() {
           language: string;
           license: string;
           updated_at: string | null;
+          code_evidence?: string[];
         }>;
       };
       setServerOrder(payload.ids ?? []);
@@ -237,7 +238,7 @@ export default function Home() {
             adoptionDelta: probability === null ? "Awaiting observed labels" : `${Math.round(probability * 100)}% learned signal`,
             stars: "live",
             dependents: "indexed",
-            evidence: [result.full_name, "PyTorch RankNet v1"],
+            evidence: result.code_evidence?.length ? result.code_evidence : [result.full_name, "Metadata-only match"],
             strengths: ["Live repository", "Neural reranking", "Real-data features"],
             concern: "Inspect repository evidence before adoption",
             tags: [result.language.toLowerCase(), ...nextQuery.toLowerCase().split(/\W+/).filter(Boolean).slice(0, 5)],

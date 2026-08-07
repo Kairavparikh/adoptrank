@@ -24,7 +24,7 @@ def test_real_feature_shape_and_growth() -> None:
     now = datetime.now(UTC)
     previous = repo("alpha", "Python", 100, now - timedelta(days=30))
     future = repo("alpha", "Python", 160, now)
-    assert structured_features(previous).shape == (12,)
+    assert structured_features(previous).shape == (17,)
     assert 0 < adoption_growth(previous, future) < 1
 
 

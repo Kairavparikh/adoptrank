@@ -92,6 +92,7 @@ class RankingIndex:
                 language=repo.language,
                 license=repo.license_spdx,
                 updated_at=repo.pushed_at,
+                code_evidence=repo.code_evidence_paths[:3],
             )
             for repo, score, adoption_probability in ranked[:limit]
         ]
@@ -101,6 +102,8 @@ class RankingIndex:
         evidence = []
         if repo.topics:
             evidence.append(f"implements {', '.join(repo.topics[:2])}")
+        if repo.code_evidence_paths:
+            evidence.append(f"code verified in {', '.join(repo.code_evidence_paths[:2])}")
         if repo.pypi_downloads_30d:
             evidence.append(f"{repo.pypi_downloads_30d:,} recent PyPI downloads")
         if adoption_probability is not None and adoption_probability >= 0.6:

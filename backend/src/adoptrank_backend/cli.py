@@ -17,6 +17,12 @@ def main() -> None:
     dataset.add_argument("--snapshots", type=Path, nargs="+", required=True)
     dataset.add_argument("--output", type=Path, required=True)
 
+    analyze = commands.add_parser("analyze-code")
+    analyze.add_argument("--snapshots", type=Path, required=True)
+    analyze.add_argument("--output", type=Path, required=True)
+    analyze.add_argument("--limit", type=int, default=20)
+    analyze.add_argument("--files-per-repo", type=int, default=8)
+
     train = commands.add_parser("train")
     train.add_argument("--dataset", type=Path, required=True)
     train.add_argument("--snapshots", type=Path, required=True)
@@ -39,6 +45,11 @@ def main() -> None:
         pairs = build_pairs(load_snapshots(args.snapshots))
         write_pairs(pairs, args.output)
         print(f"pairs={len(pairs)} output={args.output}")
+    elif args.command == "analyze-code":
+        from .code_analysis import enrich_snapshot_file
+
+        count = asyncio.run(enrich_snapshot_file(args.snapshots, args.output, args.limit, args.files_per_repo))
+        print(f"code_indexed={count} output={args.output}")
     elif args.command == "train":
         from .train import train_model
 

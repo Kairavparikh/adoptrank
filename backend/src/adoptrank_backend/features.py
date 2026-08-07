@@ -20,6 +20,11 @@ FEATURE_NAMES = (
     "log_pypi_downloads",
     "log_contributors",
     "repository_age",
+    "has_code_index",
+    "test_coverage_proxy",
+    "example_coverage_proxy",
+    "dependency_density",
+    "symbol_density",
 )
 
 
@@ -30,7 +35,14 @@ def tokenize(text: str) -> list[str]:
 def repository_text(repo: RepositorySnapshot) -> str:
     return " ".join(
         part
-        for part in [repo.full_name.replace("/", " "), repo.description, " ".join(repo.topics), repo.language]
+        for part in [
+            repo.full_name.replace("/", " "),
+            repo.description,
+            " ".join(repo.topics),
+            repo.language,
+            " ".join(repo.code_terms),
+            " ".join(repo.code_evidence_paths),
+        ]
         if part
     )
 
@@ -62,6 +74,11 @@ def structured_features(repo: RepositorySnapshot, observed_at: datetime | None =
         math.log1p(repo.pypi_downloads_30d or 0) / 18.0,
         math.log1p(repo.contributors_sampled) / 6.0,
         min(1.0, age_days / 3650.0),
+        float(bool(repo.indexed_commit_sha)),
+        min(1.0, repo.test_file_count / max(1.0, repo.source_file_count * 0.35)),
+        min(1.0, repo.example_file_count / max(1.0, repo.source_file_count * 0.15)),
+        min(1.0, repo.dependency_count / 80.0),
+        min(1.0, repo.symbol_count / max(20.0, repo.source_file_count * 30.0)),
     ]
     return np.asarray(values, dtype=np.float32)
 

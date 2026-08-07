@@ -2,6 +2,8 @@
 
 AdoptRank finds open-source repositories that fit a developer's actual project. It combines functional relevance, sustained adoption, code evidence, and compatibility instead of ranking by stars alone.
 
+The maintained product specification is in [docs/PRD.md](docs/PRD.md).
+
 ## Current vertical slice
 
 - Natural-language repository search

@@ -1,0 +1,10 @@
+backend/.venv
+backend/data
+backend/artifacts
+backend/reports
+backend/tests
+backend/src
+backend/Dockerfile
+backend/pyproject.toml
+docker-compose.yml
+docs

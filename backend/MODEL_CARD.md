@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`pytorch-ranknet-v1` reranks repositories retrieved with BM25. It is not an LLM judge. A trainable hashed text tower represents the query and repository, a structured tower represents real adoption and maintenance signals, and an interaction network produces the relevance score.
+`pytorch-ranknet-v1` reranks repositories retrieved with BM25. It is not an LLM judge. A trainable hashed text tower represents the query and commit-pinned code/repository evidence, a structured tower represents code quality proxies plus real adoption and maintenance signals, and an interaction network produces the relevance score.
 
 ## Objectives
 
@@ -16,6 +16,8 @@ Missing adoption labels contribute no adoption gradient. Inference returns `null
 The first run used 76 repositories collected from GitHub and PyPI, producing 217 pairs. The chronological/deterministic split contained 173 training and 44 validation pairs. Pair accuracy and pair NDCG were both 1.0 after 18 epochs; this is a pipeline-validation result because the weak-label task is easier than a blinded human benchmark.
 
 Only 12 examples had real PyPI acceleration labels. The adoption head is therefore experimental until repeated snapshots, package dependent growth, and a larger point-in-time dataset are available.
+
+The code-aware bootstrap indexes a bounded, balanced sample of implementation, test, example, and manifest files. Its features include code-derived capability terms, source/test/example counts, dependencies, public symbols, and evidence paths. This is a reproducible source analyzer, not whole-repository LLM judgment; the manually reviewed code-evidence benchmark remains a required milestone.
 
 The machine-readable report is in `reports/bootstrap-2026-08-06.json`.
 

@@ -6,7 +6,10 @@ No simulated repositories or generated adoption labels are used. Query relevance
 
 ```bash
 adoptrank-backend collect --queries seed_queries.txt --output data/snapshots/latest.jsonl
-adoptrank-backend dataset --snapshots data/snapshots/*.jsonl --output data/training/pairs.jsonl
-adoptrank-backend train --dataset data/training/pairs.jsonl --snapshots data/snapshots/latest.jsonl --model-dir artifacts/current
+adoptrank-backend analyze-code --snapshots data/snapshots/latest.jsonl --output data/snapshots/code.jsonl --limit 20
+adoptrank-backend dataset --snapshots data/snapshots/code.jsonl --output data/training/pairs.jsonl
+adoptrank-backend train --dataset data/training/pairs.jsonl --snapshots data/snapshots/code.jsonl --model-dir artifacts/current
 adoptrank-backend serve --model-dir artifacts/current
 ```
+
+Code analysis pins each repository to a commit, reads a bounded mix of implementation, test, example, and dependency files, and extracts deterministic symbols, imports, and capability terms. If `DATABASE_URL` is configured, both observations and file-level code evidence are persisted to PostgreSQL.

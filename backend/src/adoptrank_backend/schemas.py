@@ -28,6 +28,14 @@ class RepositorySnapshot(BaseModel):
     pypi_downloads_30d: int | None = None
     pypi_latest_release: datetime | None = None
     source_query: str = ""
+    indexed_commit_sha: str | None = None
+    source_file_count: int = 0
+    test_file_count: int = 0
+    example_file_count: int = 0
+    dependency_count: int = 0
+    symbol_count: int = 0
+    code_terms: list[str] = Field(default_factory=list)
+    code_evidence_paths: list[str] = Field(default_factory=list)
 
 
 class TrainingPair(BaseModel):
@@ -49,6 +57,7 @@ class RankedRepository(BaseModel):
     license: str
     updated_at: datetime | None
     source: str = "pytorch"
+    code_evidence: list[str] = Field(default_factory=list)
 
 
 class SearchResponse(BaseModel):
