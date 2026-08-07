@@ -2,8 +2,12 @@ name: collect-real-snapshots
 
 on:
   schedule:
-    - cron: "17 5 * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: adoptrank-live-collector
+  cancel-in-progress: false
 
 jobs:
   collect:
