@@ -14,5 +14,7 @@ test("ships the AdoptRank product contract", async () => {
   assert.match(page, /adoptrank find/);
   assert.match(layout, /AdoptRank/);
   assert.match(searchRoute, /Postgres|postgres|DATABASE_URL/);
+  assert.match(searchRoute, /RANKER_API_URL/);
+  assert.match(searchRoute, /pytorch/);
   assert.doesNotMatch(page, /codex-preview|Your site is taking shape/i);
 });

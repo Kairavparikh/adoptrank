@@ -40,3 +40,9 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/backend/.venv/
+/backend/data/
+/backend/artifacts/
+*.pyc
+__pycache__/
+*.egg-info/

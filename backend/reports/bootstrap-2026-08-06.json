@@ -1,0 +1,30 @@
+{
+  "model_version": "pytorch-ranknet-v1",
+  "corpus": {
+    "repositories": 76,
+    "sources": ["GitHub Search API", "GitHub repository metadata", "PyPI JSON API", "pypistats recent API"],
+    "captured_at": "2026-08-07T03:35:41Z",
+    "simulated_records": 0
+  },
+  "training": {
+    "pairwise_examples": 217,
+    "training_pairs": 173,
+    "validation_pairs": 44,
+    "observed_adoption_labels": 12,
+    "epochs": 18,
+    "device": "cpu",
+    "loss": 0.11353643936341958,
+    "pair_accuracy": 1.0,
+    "pair_ndcg": 1.0
+  },
+  "interpretation": {
+    "status": "bootstrap_only",
+    "relevance_labels": "Weak supervision from real repository topics and descriptions with hard same-language negatives.",
+    "adoption_labels": "Real PyPI recent-week versus preceding-month acceleration; future snapshot deltas take precedence when available.",
+    "limitations": [
+      "The relevance benchmark is automatically constructed and easier than a blinded human gold set.",
+      "Twelve adoption labels prove the multi-task path but are insufficient for a robust adoption forecast.",
+      "A single capture cannot yet validate 30-day or 90-day future growth."
+    ]
+  }
+}

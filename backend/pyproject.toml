@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adoptrank-backend"
+version = "0.1.0"
+description = "Real-data ingestion and PyTorch learning-to-rank service for AdoptRank"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "asyncpg==0.30.0",
+  "fastapi==0.128.3",
+  "httpx==0.28.1",
+  "numpy==2.2.6",
+  "pydantic==2.12.5",
+  "pydantic-settings==2.12.0",
+  "torch==2.7.1",
+  "uvicorn[standard]==0.40.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "ruff==0.13.3"]
+
+[project.scripts]
+adoptrank-backend = "adoptrank_backend.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

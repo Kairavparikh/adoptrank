@@ -55,6 +55,8 @@ create table if not exists public.repository_observations (
   open_issues integer,
   closed_issues_30d integer,
   releases_90d integer,
+  pypi_downloads_1d bigint,
+  pypi_downloads_7d bigint,
   payload jsonb not null default '{}',
   unique(repository_id, source, observed_at)
 );

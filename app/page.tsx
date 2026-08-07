@@ -12,7 +12,7 @@ type Repo = {
   license: string;
   updated: string;
   match: number;
-  adoption: "Emerging" | "Durable" | "Hidden gem" | "At risk";
+  adoption: "Emerging" | "Durable" | "Hidden gem" | "At risk" | "Unscored";
   adoptionDelta: string;
   stars: string;
   dependents: string;
@@ -177,28 +177,76 @@ export default function Home() {
   const [selected, setSelected] = useState<string>(repositories[0].id);
   const [compared, setCompared] = useState<string[]>([]);
   const [serverOrder, setServerOrder] = useState<string[]>([]);
-  const [dataSource, setDataSource] = useState<"preview" | "postgres">("preview");
+  const [dataSource, setDataSource] = useState<"preview" | "postgres" | "pytorch">("preview");
   const [searching, setSearching] = useState(false);
+  const [liveRepositories, setLiveRepositories] = useState<Repo[]>([]);
+
+  const allRepositories = useMemo(() => {
+    const liveIds = new Set(liveRepositories.map((repo) => repo.id.toLowerCase()));
+    return [...liveRepositories, ...repositories.filter((repo) => !liveIds.has(repo.id.toLowerCase()))];
+  }, [liveRepositories]);
 
   const ranked = useMemo(() => {
     const order = new Map(serverOrder.map((id, index) => [id.toLowerCase(), index]));
-    return [...repositories].sort((a, b) => {
+    return [...allRepositories].sort((a, b) => {
       const aIndex = order.get(a.id.toLowerCase());
       const bIndex = order.get(b.id.toLowerCase());
       if (aIndex !== undefined || bIndex !== undefined) return (aIndex ?? 10_000) - (bIndex ?? 10_000);
       return scoreFor(b, activeQuery) - scoreFor(a, activeQuery);
     });
-  }, [activeQuery, serverOrder]);
-  const selectedRepo = repositories.find((repo) => repo.id === selected) ?? ranked[0];
+  }, [activeQuery, allRepositories, serverOrder]);
+  const selectedRepo = allRepositories.find((repo) => repo.id === selected) ?? ranked[0];
 
   async function searchApi(nextQuery: string) {
     setSearching(true);
     try {
       const response = await fetch(`/api/search?q=${encodeURIComponent(nextQuery)}`);
       if (!response.ok) throw new Error("Search request failed");
-      const payload = (await response.json()) as { ids?: string[]; source?: "preview" | "postgres" };
+      const payload = (await response.json()) as {
+        ids?: string[];
+        source?: "preview" | "postgres" | "pytorch";
+        results?: Array<{
+          full_name: string;
+          url: string;
+          description: string;
+          score: number;
+          adoption_probability: number | null;
+          reason: string;
+          language: string;
+          license: string;
+          updated_at: string | null;
+        }>;
+      };
       setServerOrder(payload.ids ?? []);
       setDataSource(payload.source ?? "preview");
+      if (payload.results?.length) {
+        const mapped = payload.results.map((result): Repo => {
+          const [owner, name] = result.full_name.split("/");
+          const probability = result.adoption_probability === null ? null : Math.max(0, Math.min(1, result.adoption_probability));
+          return {
+            id: result.full_name,
+            owner,
+            name,
+            description: result.description,
+            reason: result.reason,
+            language: result.language,
+            license: result.license,
+            updated: result.updated_at ? new Date(result.updated_at).toLocaleDateString() : "unknown",
+            match: Math.round(70 + 29 / (1 + Math.exp(-result.score))),
+            adoption: probability === null ? "Unscored" : probability >= 0.7 ? "Emerging" : probability >= 0.5 ? "Durable" : "Hidden gem",
+            adoptionDelta: probability === null ? "Awaiting observed labels" : `${Math.round(probability * 100)}% learned signal`,
+            stars: "live",
+            dependents: "indexed",
+            evidence: [result.full_name, "PyTorch RankNet v1"],
+            strengths: ["Live repository", "Neural reranking", "Real-data features"],
+            concern: "Inspect repository evidence before adoption",
+            tags: [result.language.toLowerCase(), ...nextQuery.toLowerCase().split(/\W+/).filter(Boolean).slice(0, 5)],
+            spark: [12, 18, 25, 33, 40, 48, 57, 68, 79, Math.round(80 + (probability ?? 0.5) * 20)],
+          };
+        });
+        setLiveRepositories(mapped);
+        setSelected(mapped[0].id);
+      }
     } catch {
       setServerOrder([]);
       setDataSource("preview");
@@ -276,7 +324,7 @@ export default function Home() {
                 <span className="section-kicker">Ranked for your intent</span>
                 <h2>{activeQuery}</h2>
               </div>
-              <div className="freshness"><span className="live-pulse" /> {dataSource === "postgres" ? "Live from Postgres" : "Preview data · pgvector ready"}</div>
+              <div className="freshness"><span className="live-pulse" /> {dataSource === "pytorch" ? "Live PyTorch ranking" : dataSource === "postgres" ? "Live from Postgres" : "Preview data · model backend ready"}</div>
             </div>
 
             <div className="results-layout">
@@ -374,11 +422,11 @@ export default function Home() {
 
       {view === "discover" && <Discover onSelect={(repo) => { setSelected(repo.id); setActiveQuery(repo.tags.slice(0, 3).join(" ")); setView("search"); }} />}
       {view === "method" && <Method />}
-      {view === "compare" && <Compare repos={[...new Set([...compared, ...ranked.map((repo) => repo.id)])].slice(0, 3).map((id) => repositories.find((repo) => repo.id === id)).filter((repo): repo is Repo => Boolean(repo))} onBack={() => setView("search")} />}
+      {view === "compare" && <Compare repos={[...new Set([...compared, ...ranked.map((repo) => repo.id)])].slice(0, 3).map((id) => allRepositories.find((repo) => repo.id === id)).filter((repo): repo is Repo => Boolean(repo))} onBack={() => setView("search")} />}
 
       {compared.length > 0 && (
         <div className="compare-tray">
-          <div><strong>{compared.length} selected</strong><span>{compared.map((id) => repositories.find((repo) => repo.id === id)?.name).join(" · ")}</span></div>
+          <div><strong>{compared.length} selected</strong><span>{compared.map((id) => allRepositories.find((repo) => repo.id === id)?.name).join(" · ")}</span></div>
           <button onClick={() => setCompared([])}>Clear</button>
           <button className="compare-now" onClick={() => setView("compare")}>Compare evidence →</button>
         </div>
