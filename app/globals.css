@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root { --ink:#17201d; --muted:#65706a; --paper:#f4f3ed; --card:#fbfaf6; --line:#d9dbd2; --acid:#c8f04b; --green:#1b6048; --navy:#12241f; }
+:root { --ink:#17201d; --muted:#65706a; --paper:#f4f3ed; --card:#fbfaf6; --line:#d9dbd2; --acid:#c8f04b; --green:#1b6048; --navy:#12241f; --font-geist-sans:"Helvetica Neue",Arial,sans-serif; --font-geist-mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-geist-sans), Arial, sans-serif; }
@@ -30,6 +30,7 @@ a { color:inherit; }
 .search-icon { font:400 30px Georgia; color:#6f7873; transform:rotate(-20deg); margin-right:14px; }
 .search-box input { flex:1; border:0; outline:0; font-size:17px; min-width:0; color:var(--ink); background:transparent; }
 .search-box button { height:58px; border:0; border-radius:11px; background:var(--ink); color:white; font-weight:630; font-size:14px; padding:0 22px; cursor:pointer; white-space:nowrap; }
+.search-box button:disabled { cursor:wait; opacity:.78; }
 .search-box button span { color:var(--acid); margin-left:9px; }
 .examples { margin-top:19px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; justify-content:center; z-index:1; }
 .examples>span { font:600 11px var(--font-geist-mono); color:#929891; text-transform:uppercase; margin-right:3px; }

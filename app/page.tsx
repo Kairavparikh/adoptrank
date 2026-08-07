@@ -176,12 +176,36 @@ export default function Home() {
   const [view, setView] = useState<"search" | "discover" | "method" | "compare">("search");
   const [selected, setSelected] = useState<string>(repositories[0].id);
   const [compared, setCompared] = useState<string[]>([]);
+  const [serverOrder, setServerOrder] = useState<string[]>([]);
+  const [dataSource, setDataSource] = useState<"preview" | "postgres">("preview");
+  const [searching, setSearching] = useState(false);
 
-  const ranked = useMemo(
-    () => [...repositories].sort((a, b) => scoreFor(b, activeQuery) - scoreFor(a, activeQuery)),
-    [activeQuery],
-  );
+  const ranked = useMemo(() => {
+    const order = new Map(serverOrder.map((id, index) => [id.toLowerCase(), index]));
+    return [...repositories].sort((a, b) => {
+      const aIndex = order.get(a.id.toLowerCase());
+      const bIndex = order.get(b.id.toLowerCase());
+      if (aIndex !== undefined || bIndex !== undefined) return (aIndex ?? 10_000) - (bIndex ?? 10_000);
+      return scoreFor(b, activeQuery) - scoreFor(a, activeQuery);
+    });
+  }, [activeQuery, serverOrder]);
   const selectedRepo = repositories.find((repo) => repo.id === selected) ?? ranked[0];
+
+  async function searchApi(nextQuery: string) {
+    setSearching(true);
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(nextQuery)}`);
+      if (!response.ok) throw new Error("Search request failed");
+      const payload = (await response.json()) as { ids?: string[]; source?: "preview" | "postgres" };
+      setServerOrder(payload.ids ?? []);
+      setDataSource(payload.source ?? "preview");
+    } catch {
+      setServerOrder([]);
+      setDataSource("preview");
+    } finally {
+      setSearching(false);
+    }
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -191,6 +215,7 @@ export default function Home() {
     setActiveQuery(nextQuery);
     setSelected(first?.id ?? repositories[0].id);
     setView("search");
+    void searchApi(nextQuery);
   }
 
   function runExample(example: string) {
@@ -199,6 +224,7 @@ export default function Home() {
     setActiveQuery(example);
     setSelected(first?.id ?? repositories[0].id);
     setView("search");
+    void searchApi(example);
   }
 
   function toggleCompare(id: string) {
@@ -236,7 +262,7 @@ export default function Home() {
                 aria-label="Describe the repository you need"
                 placeholder="What do you want to build?"
               />
-              <button type="submit">Find repositories <span>→</span></button>
+              <button type="submit" disabled={searching}>{searching ? "Ranking evidence…" : "Find repositories"} <span>→</span></button>
             </form>
             <div className="examples">
               <span>Try</span>
@@ -250,7 +276,7 @@ export default function Home() {
                 <span className="section-kicker">Ranked for your intent</span>
                 <h2>{activeQuery}</h2>
               </div>
-              <div className="freshness"><span className="live-pulse" /> Refreshed 4 min ago</div>
+              <div className="freshness"><span className="live-pulse" /> {dataSource === "postgres" ? "Live from Postgres" : "Preview data · pgvector ready"}</div>
             </div>
 
             <div className="results-layout">
