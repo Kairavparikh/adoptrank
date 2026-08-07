@@ -6,8 +6,12 @@ function run(query) {
   const api = vscode.workspace.getConfiguration("adoptrank").get("apiUrl");
   const terminal = vscode.window.createTerminal({ name: "AdoptRank", cwd: root });
   const safeQuery = query.replaceAll("'", "'\\''");
-  terminal.sendText(`adoptrank-backend find '${safeQuery}' --path . --api '${api}'`);
+  terminal.sendText(`adoptrank find '${safeQuery}' --path . --api '${api}'`);
   terminal.show();
+}
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 function activate(context) {
@@ -19,6 +23,18 @@ function activate(context) {
     const selection = vscode.window.activeTextEditor?.document.getText(vscode.window.activeTextEditor.selection).trim();
     const query = selection || await vscode.window.showInputBox({ prompt: "Describe the capability" });
     if (query) run(query);
+  }));
+  context.subscriptions.push(vscode.commands.registerCommand("adoptrank.leaderboard", async () => {
+    const owner = await vscode.window.showInputBox({
+      prompt: "Optional GitHub username or organization (leave blank for overall)",
+      placeHolder: "openai",
+    });
+    if (owner === undefined) return;
+    const webUrl = vscode.workspace.getConfiguration("adoptrank").get("webUrl");
+    const terminal = vscode.window.createTerminal({ name: "AdoptRank Leaderboard" });
+    const ownerFlag = owner.trim() ? ` --owner ${shellQuote(owner.trim())}` : "";
+    terminal.sendText(`adoptrank leaderboard${ownerFlag} --api ${shellQuote(webUrl)}`);
+    terminal.show();
   }));
 }
 

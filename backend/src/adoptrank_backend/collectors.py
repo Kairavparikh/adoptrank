@@ -39,9 +39,13 @@ class GitHubCollector:
         response.raise_for_status()
         return response.json()
 
-    async def search(self, query: str, per_query: int = 25) -> list[RepositorySnapshot]:
+    async def search(
+        self, query: str, per_query: int = 25, sort: str = "stars"
+    ) -> list[RepositorySnapshot]:
+        if sort not in {"stars", "updated"}:
+            raise ValueError(f"Unsupported GitHub repository sort: {sort}")
         payload = await self._get(
-            "/search/repositories", q=query, sort="stars", order="desc", per_page=min(per_query, 100)
+            "/search/repositories", q=query, sort=sort, order="desc", per_page=min(per_query, 100)
         )
         assert isinstance(payload, dict)
         semaphore = asyncio.Semaphore(8)
@@ -127,10 +131,11 @@ async def collect_queries(query_file: Path, output: Path, per_query: int = 25) -
     unique: dict[str, RepositorySnapshot] = {}
     try:
         for query in queries:
-            for repo in await collector.search(query, per_query=per_query):
-                current = unique.get(repo.full_name.lower())
-                if current is None or repo.captured_at > current.captured_at:
-                    unique[repo.full_name.lower()] = repo
+            for sort in ("stars", "updated"):
+                for repo in await collector.search(query, per_query=per_query, sort=sort):
+                    current = unique.get(repo.full_name.lower())
+                    if current is None or repo.captured_at > current.captured_at:
+                        unique[repo.full_name.lower()] = repo
     finally:
         await collector.close()
 

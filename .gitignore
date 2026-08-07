@@ -41,8 +41,11 @@ next-env.d.ts
 /outputs/
 /work/
 /backend/.venv/
+/backend/build/
+/backend/dist/
 /backend/data/
 /backend/artifacts/
 *.pyc
+*.vsix
 __pycache__/
 *.egg-info/

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="adoptrank-backend")
+    parser = argparse.ArgumentParser(prog="adoptrank")
     commands = parser.add_subparsers(dest="command", required=True)
 
     collect = commands.add_parser("collect")
@@ -40,7 +40,7 @@ def main() -> None:
     find = commands.add_parser("find")
     find.add_argument("query")
     find.add_argument("--path", type=Path, default=Path.cwd())
-    find.add_argument("--api", default="http://127.0.0.1:8000")
+    find.add_argument("--api", default="https://adoptrank.vercel.app")
     find.add_argument("--no-context", action="store_true")
     find.add_argument("--dry-run", action="store_true")
     find.add_argument("--limit", type=int, default=10)
@@ -50,6 +50,33 @@ def main() -> None:
 
     persist = commands.add_parser("persist")
     persist.add_argument("--snapshots", type=Path, required=True)
+
+    leaderboard = commands.add_parser("leaderboard")
+    leaderboard.add_argument("--owner", "--username", dest="owner")
+    leaderboard.add_argument("--language")
+    leaderboard.add_argument("--license")
+    leaderboard.add_argument(
+        "--status", choices=("emerging", "durable", "hidden-gem", "overhyped", "at-risk")
+    )
+    leaderboard.add_argument("--window", type=int, choices=(1, 7, 30, 90), default=30)
+    leaderboard.add_argument(
+        "--sort",
+        choices=(
+            "overall",
+            "adoption",
+            "maintenance",
+            "quality",
+            "depth",
+            "originality",
+            "attention",
+            "momentum",
+            "stars",
+        ),
+        default="overall",
+    )
+    leaderboard.add_argument("--page", type=int, default=1)
+    leaderboard.add_argument("--limit", type=int, default=20)
+    leaderboard.add_argument("--api", default="https://adoptrank.vercel.app")
 
     args = parser.parse_args()
     if args.command == "collect":
@@ -102,10 +129,20 @@ def main() -> None:
         if args.dry_run:
             print(json.dumps(payload, indent=2))
             return
-        headers = (
-            {"x-adoptrank-key": os.environ["RANKER_API_KEY"]} if os.environ.get("RANKER_API_KEY") else {}
+        base_url = args.api.rstrip("/")
+        direct_ranker = "modal.run" in base_url or base_url.startswith(
+            ("http://127.0.0.1", "http://localhost")
         )
-        response = httpx.post(f"{args.api.rstrip('/')}/v1/search", json=payload, headers=headers, timeout=180)
+        endpoint = (
+            base_url
+            if base_url.endswith(("/api/search", "/v1/search"))
+            else f"{base_url}/v1/search" if direct_ranker
+            else f"{base_url}/api/search"
+        )
+        headers = {}
+        if endpoint.endswith("/v1/search") and os.environ.get("RANKER_API_KEY"):
+            headers["x-adoptrank-key"] = os.environ["RANKER_API_KEY"]
+        response = httpx.post(endpoint, json=payload, headers=headers, timeout=180)
         response.raise_for_status()
         for rank, result in enumerate(response.json()["results"], 1):
             print(
@@ -130,6 +167,49 @@ def main() -> None:
         observations = asyncio.run(persist_snapshots(settings.database_url, snapshots))
         evidence = asyncio.run(persist_code_analysis(settings.database_url, snapshots))
         print(f"observations={observations} code_evidence={evidence}")
+    elif args.command == "leaderboard":
+        import httpx
+
+        status_names = {
+            "emerging": "Emerging",
+            "durable": "Durable",
+            "hidden-gem": "Hidden gem",
+            "overhyped": "Overhyped",
+            "at-risk": "At risk",
+        }
+        base_url = args.api.rstrip("/")
+        endpoint = base_url if base_url.endswith("/api/leaderboard") else f"{base_url}/api/leaderboard"
+        response = httpx.get(
+            endpoint,
+            params={
+                key: value
+                for key, value in {
+                    "owner": args.owner,
+                    "language": args.language,
+                    "license": args.license,
+                    "status": status_names.get(args.status),
+                    "window": args.window,
+                    "sort": args.sort,
+                    "page": max(1, args.page),
+                    "limit": max(5, min(50, args.limit)),
+                }.items()
+                if value is not None
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        print(
+            f"AdoptRank leaderboard · {payload['total']} repositories · "
+            f"{args.window}d · page {payload['page']}/{payload['totalPages']}"
+        )
+        for item in payload["items"]:
+            delta = item["rankDelta"]
+            movement = "new" if delta is None else f"↑{delta}" if delta > 0 else f"↓{abs(delta)}" if delta < 0 else "—"
+            print(
+                f"{item['globalRank']:04d} {item['fullName']}  {item['score'] * 100:5.1f}  "
+                f"{item['status']}  {movement}\n     {item['url']}"
+            )
 
 
 if __name__ == "__main__":

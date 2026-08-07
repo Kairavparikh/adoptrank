@@ -5,8 +5,8 @@
 - `adoptrank.vercel.app`: Next.js UI and authenticated server-side proxy.
 - Modal L4 ranker: FastAPI, Qwen3 embedding/reranking, and the trained PyTorch heads.
 - Neon PostgreSQL with pgvector: observations, code evidence, 1,024-dimensional Qwen code chunks, and HNSW indexes.
-- Modal schedule: six-hour real GitHub/PyPI polling into Neon.
-- GitHub Actions: portable six-hour collection/code refresh and weekly Qwen head retraining when the repository is published.
+- Modal schedule: hourly real GitHub/PyPI polling into Neon at minute 17.
+- GitHub Actions: manual portable collection/code refresh and weekly Qwen head retraining when the repository is published.
 
 ## Required secrets
 
@@ -43,11 +43,16 @@ The ranking endpoint is public at the network layer but `/v1/search` requires th
 private `x-adoptrank-key` shared only by Modal and Vercel. `/health` intentionally
 contains no secret or repository data and remains available for health checks.
 
-The collector schedule is `17 */6 * * *` UTC. Its first hosted verification run
-on 2026-08-07 persisted 246 real observations, grew the tracked catalog from 76
-to 246 repositories, and advanced the database watermark to
-`2026-08-07T05:00:41Z`. The production pgvector table contains 241 Qwen code
-chunks from the commit-pinned bootstrap corpus.
+The collector schedule is `17 * * * *` UTC. Each run searches both established
+and recently updated repositories, deduplicates them, writes immutable observations,
+and materializes the leaderboard. Hourly observations are retained for 30 days,
+compacted to one daily observation from days 30–90, and removed after 90 days.
+The initial hosted run persisted 246 repositories. The widened hourly verification
+on 2026-08-07 grew production to 901 repositories and 1,223 observations, created
+two leaderboard snapshots with 1,147 total ranking rows, and advanced the watermark
+to `2026-08-07T05:28:34Z`. Of the first 100 current results, 25 had measurable
+rank movement and 74 entered the expanded catalog. The production pgvector table
+contains 241 Qwen code chunks from the commit-pinned bootstrap corpus.
 
 ### Alternative: Hugging Face Docker Space
 
@@ -86,4 +91,5 @@ The production response must report `qwen3-infonce-ranknet-v2`, a non-null data 
 - Missing adoption observations remain null/masked during training rather than becoming zeros.
 - Source analysis is commit-pinned; failed refreshes preserve prior evidence.
 - Collector workflow concurrency prevents overlapping pollers.
+- Leaderboard snapshots are idempotent by observation watermark and use deterministic tie-breaking.
 - Model startup warms Qwen before accepting traffic, and Docker health checks allow a three-minute start period.

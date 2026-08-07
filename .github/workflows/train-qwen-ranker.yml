@@ -15,17 +15,17 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e backend
+      - run: pip install -e "backend[ml]"
       - name: Collect weekly training corpus
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: adoptrank-backend collect --queries backend/seed_queries.txt --output backend/data/snapshots/latest.jsonl --per-query 50
+        run: adoptrank collect --queries backend/seed_queries.txt --output backend/data/snapshots/latest.jsonl --per-query 50
       - name: Build code-aware corpus
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: adoptrank-backend analyze-code --snapshots backend/data/snapshots/latest.jsonl --output backend/data/snapshots/code.jsonl --limit 100 --files-per-repo 12
-      - run: adoptrank-backend dataset --snapshots backend/data/snapshots/code.jsonl --output backend/data/training/pairs.jsonl
-      - run: adoptrank-backend train --dataset backend/data/training/pairs.jsonl --snapshots backend/data/snapshots/code.jsonl --model-dir backend/artifacts/qwen --epochs 18
+        run: adoptrank analyze-code --snapshots backend/data/snapshots/latest.jsonl --output backend/data/snapshots/code.jsonl --limit 100 --files-per-repo 12
+      - run: adoptrank dataset --snapshots backend/data/snapshots/code.jsonl --output backend/data/training/pairs.jsonl
+      - run: adoptrank train --dataset backend/data/training/pairs.jsonl --snapshots backend/data/snapshots/code.jsonl --model-dir backend/artifacts/qwen --epochs 18
       - uses: actions/upload-artifact@v4
         with:
           name: qwen-ranker-${{ github.run_id }}

@@ -3,30 +3,52 @@ requires = ["setuptools>=75", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "adoptrank-backend"
+name = "adoptrank"
 version = "0.1.0"
-description = "Real-data ingestion and PyTorch learning-to-rank service for AdoptRank"
-requires-python = ">=3.11,<3.14"
+description = "Real-data repository discovery, adoption leaderboard, and contextual CLI"
+readme = "PYPI_README.md"
+license = "MIT"
+authors = [{ name = "Kairav Parikh" }]
+keywords = ["github", "repository-search", "learning-to-rank", "code-search", "developer-tools"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.11,<3.15"
 dependencies = [
-  "asyncpg==0.30.0",
-  "fastapi==0.128.3",
   "httpx==0.28.1",
-  "numpy==2.2.6",
   "pydantic==2.12.5",
   "pydantic-settings==2.12.0",
-  "sentence-transformers>=5.1.0,<6",
   "tree-sitter>=0.25.2,<0.27",
   "tree-sitter-language-pack>=0.11.0,<2",
   "pathspec>=0.12.1,<1",
-  "torch==2.7.1",
-  "uvicorn[standard]==0.40.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==8.4.2", "ruff==0.13.3"]
+ops = ["asyncpg==0.30.0"]
+ml = [
+  "fastapi==0.128.3",
+  "numpy==2.2.6",
+  "sentence-transformers>=5.1.0,<6",
+  "torch==2.7.1",
+  "uvicorn[standard]==0.40.0",
+]
+dev = ["asyncpg==0.30.0", "pytest==8.4.2", "ruff==0.13.3"]
+
+[project.urls]
+Homepage = "https://adoptrank.vercel.app"
+Repository = "https://github.com/Kairavparikh/adoptrank"
+Issues = "https://github.com/Kairavparikh/adoptrank/issues"
 
 [project.scripts]
-adoptrank-backend = "adoptrank_backend.cli:main"
+adoptrank = "adoptrank_backend.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

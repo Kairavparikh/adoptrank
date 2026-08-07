@@ -48,12 +48,21 @@ Never use `NEXT_PUBLIC_` for either value.
 
 ## Polling and vector maintenance
 
-`collect_live_repositories` runs at minute 17 every six hours. It polls the real
-GitHub and PyPI APIs and writes a new point-in-time observation to Neon. Run and
+`collect_live_repositories` runs hourly at minute 17. It polls both top-starred
+and recently updated GitHub results plus real PyPI signals, writes a point-in-time
+observation to Neon, and materializes a leaderboard snapshot. Modal limits the
+collector to one container so a slow poll queues instead of overlapping. Run and
 verify it manually with:
 
 ```bash
 backend/.venv/bin/modal run deploy/modal_app.py::collect_live_repositories
+```
+
+The materializer keeps hourly detail for 30 days, one daily observation for days
+30–90, and deletes older observations. It can be run independently with:
+
+```bash
+backend/.venv/bin/modal run deploy/modal_app.py::materialize_production_leaderboard
 ```
 
 Rebuild production code vectors on the same L4/Qwen stack used by inference:

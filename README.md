@@ -7,6 +7,7 @@ The maintained product specification is in [docs/PRD.md](docs/PRD.md).
 ## Current vertical slice
 
 - Natural-language repository search
+- Live overall and per-owner leaderboards with adoption windows and rank movement
 - Evidence panel with code paths and adoption signals
 - Emerging, Durable, and Hidden Gem discovery views
 - Side-by-side repository comparison
@@ -41,6 +42,30 @@ npm run lint
 npm test
 ```
 
+## Public CLI
+
+The `adoptrank` command uses the public Vercel API by default. Vercel supplies the
+private Modal credential server-side, so users never need an AdoptRank API key.
+Install from a published GitHub checkout with `pipx`:
+
+```bash
+pipx install "git+https://github.com/Kairavparikh/adoptrank.git#subdirectory=backend"
+```
+
+Then run contextual search from any project or inspect the live leaderboard:
+
+```bash
+cd your-project
+adoptrank find "a streaming anomaly detector that fits this codebase"
+adoptrank leaderboard --language Python --sort momentum
+adoptrank leaderboard --owner openai --window 7
+```
+
+The scanner sends only bounded structured context—languages, dependencies,
+frameworks, and symbols. It skips ignored paths, dependency/build directories,
+known credential files, and files matching secret patterns. Use
+`adoptrank find "..." --dry-run` to inspect the exact payload before sending it.
+
 The public deployment at <https://adoptrank.vercel.app> is connected to the
 checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also
 collects GitHub/PyPI data, writes point-in-time PostgreSQL observations, and
@@ -58,6 +83,7 @@ The Python backend lives in `backend/`. It now supports:
 - Masked adoption plus depth, quality, maintenance, and originality heads
 - BM25 + dense top-50 retrieval followed by bounded Qwen3 cross-encoder reranking
 - FastAPI `/health` and `/v1/search` endpoints
+- Hourly, non-overlapping GitHub/PyPI collection with 90-day history retention
 
 The current Qwen run uses 76 real repositories and 217 preference pairs. Its held-out pair accuracy is 0.659 and NDCG is 0.874; see `backend/MODEL_CARD.md` for limitations.
 

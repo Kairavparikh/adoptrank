@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip && pip install ".[ml,ops]"
 COPY artifacts/qwen /models/qwen
 
 EXPOSE 8000

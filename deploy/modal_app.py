@@ -26,7 +26,9 @@ def download_qwen_models() -> None:
 
 image = (
     modal.Image.debian_slim(python_version="3.12")
-    .pip_install_from_pyproject(str(BACKEND_ROOT / "pyproject.toml"))
+    .pip_install_from_pyproject(
+        str(BACKEND_ROOT / "pyproject.toml"), optional_dependencies=["ml", "ops"]
+    )
     .env(
         {
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -106,8 +108,9 @@ def ranking_api():
     image=collector_image,
     cpu=1.0,
     memory=2_048,
-    timeout=20 * 60,
-    schedule=modal.Cron("17 */6 * * *"),
+    timeout=30 * 60,
+    max_containers=1,
+    schedule=modal.Cron("17 * * * *"),
     secrets=[
         modal.Secret.from_name("adoptrank-database"),
         modal.Secret.from_name("adoptrank-github"),
@@ -120,14 +123,39 @@ def collect_live_repositories() -> dict[str, int | str]:
     from pathlib import Path
 
     from adoptrank_backend.collectors import collect_queries
+    from adoptrank_backend.config import settings
+    from adoptrank_backend.leaderboard import materialize_leaderboard
 
     captured_at = datetime.now(UTC)
     output = Path("/tmp") / f"adoptrank-{captured_at:%Y%m%dT%H%M%SZ}.jsonl"
-    count = asyncio.run(collect_queries(Path("/app/seed_queries.txt"), output, per_query=25))
+    count = asyncio.run(collect_queries(Path("/app/seed_queries.txt"), output, per_query=50))
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    leaderboard = asyncio.run(materialize_leaderboard(settings.database_url))
     return {
         "repositories": count,
         "captured_at": captured_at.isoformat(),
+        "leaderboard_snapshot": str(leaderboard["snapshot_id"]),
     }
+
+
+@app.function(
+    image=collector_image,
+    cpu=1.0,
+    memory=2_048,
+    timeout=10 * 60,
+    secrets=[modal.Secret.from_name("adoptrank-database")],
+)
+def materialize_production_leaderboard() -> dict[str, int | str]:
+    """Create an immutable leaderboard snapshot from Neon observations."""
+    import asyncio
+
+    from adoptrank_backend.config import settings
+    from adoptrank_backend.leaderboard import materialize_leaderboard
+
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return asyncio.run(materialize_leaderboard(settings.database_url))
 
 
 @app.function(

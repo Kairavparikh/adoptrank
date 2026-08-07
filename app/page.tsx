@@ -2,6 +2,8 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
+import Leaderboard from "./components/Leaderboard";
+
 type Repo = {
   id: string;
   name: string;
@@ -173,7 +175,7 @@ function MiniChart({ values }: { values: number[] }) {
 export default function Home() {
   const [query, setQuery] = useState("Bitcoin anomaly detection in Python");
   const [activeQuery, setActiveQuery] = useState("Bitcoin anomaly detection in Python");
-  const [view, setView] = useState<"search" | "discover" | "method" | "compare">("search");
+  const [view, setView] = useState<"leaderboard" | "search" | "method" | "compare">("leaderboard");
   const [selected, setSelected] = useState<string>(repositories[0].id);
   const [compared, setCompared] = useState<string[]>([]);
   const [serverOrder, setServerOrder] = useState<string[]>([]);
@@ -285,17 +287,19 @@ export default function Home() {
   return (
     <main>
       <nav className="nav-shell" aria-label="Primary navigation">
-        <button className="brand" onClick={() => setView("search")} aria-label="AdoptRank home">
+        <button className="brand" onClick={() => setView("leaderboard")} aria-label="AdoptRank home">
           <span className="brand-mark">A</span>
           <span>AdoptRank</span>
         </button>
         <div className="nav-tabs">
+          <button className={view === "leaderboard" ? "active" : ""} onClick={() => setView("leaderboard")}>Leaderboard</button>
           <button className={view === "search" ? "active" : ""} onClick={() => setView("search")}>Search</button>
-          <button className={view === "discover" ? "active" : ""} onClick={() => setView("discover")}>Discover</button>
           <button className={view === "method" ? "active" : ""} onClick={() => setView("method")}>How it works</button>
         </div>
         <a className="cli-pill" href="#terminal"><span className="status-dot" /> CLI preview</a>
       </nav>
+
+      {view === "leaderboard" && <Leaderboard />}
 
       {view === "search" && (
         <>
@@ -421,7 +425,6 @@ export default function Home() {
         </>
       )}
 
-      {view === "discover" && <Discover onSelect={(repo) => { setSelected(repo.id); setActiveQuery(repo.tags.slice(0, 3).join(" ")); setView("search"); }} />}
       {view === "method" && <Method />}
       {view === "compare" && <Compare repos={[...new Set([...compared, ...ranked.map((repo) => repo.id)])].slice(0, 3).map((id) => allRepositories.find((repo) => repo.id === id)).filter((repo): repo is Repo => Boolean(repo))} onBack={() => setView("search")} />}
 
@@ -434,25 +437,6 @@ export default function Home() {
       )}
       <footer><div className="brand"><span className="brand-mark">A</span><span>AdoptRank</span></div><p>Open-source discovery, backed by evidence.</p><span>Preview index · Updated continuously</span></footer>
     </main>
-  );
-}
-
-function Discover({ onSelect }: { onSelect: (repo: Repo) => void }) {
-  return (
-    <section className="subpage discover-page">
-      <div className="subpage-hero"><span className="section-kicker">Ecosystem intelligence</span><h1>See adoption<br /><em>before the hype.</em></h1><p>Continuously refreshed rankings distinguish genuine usage from temporary attention.</p></div>
-      <div className="category-grid">
-        {(["Emerging", "Durable", "Hidden gem"] as const).map((category) => (
-          <div className="category" key={category}>
-            <div className="category-head"><div><span>{category === "Emerging" ? "↗" : category === "Durable" ? "◆" : "✦"}</span><h2>{category}</h2></div><p>{category === "Emerging" ? "Adoption is accelerating" : category === "Durable" ? "Used and maintained over time" : "Usage ahead of attention"}</p></div>
-            {repositories.filter((repo) => repo.adoption === category).map((repo, index) => (
-              <button className="mini-repo" key={repo.id} onClick={() => onSelect(repo)}><b>{index + 1}</b><div><strong>{repo.owner}/{repo.name}</strong><span>{repo.language} · {repo.adoptionDelta}</span></div><MiniChart values={repo.spark} /><i>→</i></button>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="attention-gap"><div><span className="section-kicker light">The attention–adoption gap</span><h2>Stars show interest.<br />Dependencies show commitment.</h2></div><p>AdoptRank measures package usage, returning contributors, release health, code evidence, and security response. Every label can be traced back to its source and timestamp.</p></div>
-    </section>
   );
 }
 

@@ -4,19 +4,26 @@
   "description": "Find open-source repositories ranked for the current workspace.",
   "version": "0.1.0",
   "publisher": "kairavparikh",
+  "license": "MIT",
+  "homepage": "https://adoptrank.vercel.app",
+  "repository": { "type": "git", "url": "https://github.com/Kairavparikh/adoptrank.git" },
+  "bugs": { "url": "https://github.com/Kairavparikh/adoptrank/issues" },
+  "keywords": ["github", "repository search", "learning to rank", "code search"],
   "engines": { "vscode": "^1.90.0" },
   "categories": ["Other", "Machine Learning"],
-  "activationEvents": ["onCommand:adoptrank.find", "onCommand:adoptrank.findSelection"],
+  "activationEvents": ["onCommand:adoptrank.find", "onCommand:adoptrank.findSelection", "onCommand:adoptrank.leaderboard"],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       { "command": "adoptrank.find", "title": "AdoptRank: Find for Workspace" },
-      { "command": "adoptrank.findSelection", "title": "AdoptRank: Find for Selection" }
+      { "command": "adoptrank.findSelection", "title": "AdoptRank: Find for Selection" },
+      { "command": "adoptrank.leaderboard", "title": "AdoptRank: Open Repository Leaderboard" }
     ],
     "configuration": {
       "title": "AdoptRank",
       "properties": {
-        "adoptrank.apiUrl": { "type": "string", "default": "http://127.0.0.1:8000", "description": "AdoptRank inference API URL" }
+        "adoptrank.apiUrl": { "type": "string", "default": "https://adoptrank.vercel.app", "description": "AdoptRank web API URL" },
+        "adoptrank.webUrl": { "type": "string", "default": "https://adoptrank.vercel.app", "description": "AdoptRank web and leaderboard URL" }
       }
     }
   },

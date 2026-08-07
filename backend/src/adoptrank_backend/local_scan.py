@@ -67,7 +67,11 @@ def scan_project(root: Path, max_files: int = 120, max_bytes: int = 1_000_000) -
                 except Exception:
                     file_symbols, imports = [], []
                 symbols.extend(file_symbols[:20])
-                dependencies.update(imports)
+                dependencies.update(
+                    dependency
+                    for dependency in imports
+                    if dependency.lower() not in {"from", "import", "include", "require", "use"}
+                )
             if name == "package.json":
                 try:
                     package = json.loads(content)

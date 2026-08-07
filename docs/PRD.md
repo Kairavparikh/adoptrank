@@ -154,7 +154,8 @@ No simulated observations are used in production datasets.
 - Normal repositories: daily refresh.
 - Low-change repositories: adaptive backoff up to weekly.
 - Source analysis: rerun only when the indexed commit changes.
-- Immutable daily observations support point-in-time training and backtests.
+- Immutable hourly observations support point-in-time training and backtests;
+  observations older than 30 days compact to daily resolution through day 90.
 - Queue retries use exponential backoff, rate-limit awareness, idempotency keys, and dead-letter storage.
 
 The UI always displays a data watermark. Stale sources degrade independently rather than blocking all search.
@@ -253,4 +254,4 @@ The response includes a model version, data watermark, and ranked results with d
 
 ## 14. Current implementation status
 
-M1–M3 are implemented: the Vercel UI, FastAPI service, six-hour real-data polling, commit-pinned Tree-sitter analysis, Qwen3/pgvector retrieval, InfoNCE and pairwise PyTorch training, multi-head scoring, safe CLI scanner, and VS Code integration are in the repository and locally verified. M4 has a real 76-repository/217-pair bootstrap and weekly retraining workflow, but still requires repeated temporal observations and a human relevance benchmark. M5's hosted path is live: the Modal L4 service loads both Qwen models and the trained PyTorch artifacts, `adoptrank.vercel.app` returns authenticated model results through its server-side proxy, Neon stores the real observation/vector tables, and the deployed Modal cron polls GitHub/PyPI every six hours. Its first verification run persisted 246 new observations.
+M1–M3 are implemented: the Vercel UI, FastAPI service, hourly real-data polling, commit-pinned Tree-sitter analysis, Qwen3/pgvector retrieval, InfoNCE and pairwise PyTorch training, multi-head scoring, safe CLI scanner, and VS Code integration are in the repository and verified end to end. M4 has a real 76-repository/217-pair training bootstrap plus 901 live repositories and 1,223 temporal observations, but still requires longer-horizon labels and a human relevance benchmark. M5's hosted path is live: the Modal L4 service loads both Qwen models and the trained PyTorch artifacts, `adoptrank.vercel.app` returns authenticated model results through its server-side proxy, Neon stores real observation/vector/ranking tables, and the deployed Modal cron polls GitHub/PyPI hourly. Two production leaderboard snapshots now demonstrate real rank movement.
