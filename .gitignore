@@ -40,10 +40,13 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/report.csv
 /backend/.venv/
 /backend/build/
 /backend/dist/
 /backend/data/
+/backend/benchmarks/repos/
+/backend/benchmarks/public_context_pairs.jsonl
 /backend/artifacts/
 *.pyc
 *.vsix

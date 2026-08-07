@@ -40,6 +40,19 @@ adoptrank leaderboard --owner openai --window 7
 Results contain simple direct GitHub links. The hosted Vercel proxy supplies the
 private model-service credential, so CLI users do not need an AdoptRank API key.
 
+## Experimental coding-agent context
+
+Build a task-specific evidence pack from safe local source excerpts and ranked
+GitHub repositories:
+
+```bash
+adoptrank context "add idempotent Stripe webhook retries" --budget 8000
+```
+
+Use `--json` for integrations and `--no-external` for a fully local retrieval
+run. Token counts are portable estimates until provider-reported telemetry is
+integrated; the project does not yet claim measured Claude token savings.
+
 Web application: <https://adoptrank.vercel.app>
 
 Source and documentation: <https://github.com/Kairavparikh/adoptrank>

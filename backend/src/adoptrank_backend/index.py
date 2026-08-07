@@ -7,6 +7,7 @@ import torch
 
 from .config import settings
 from .embeddings import QwenEmbedder
+from .external_context import select_external_code
 from .features import FEATURE_NAMES, repository_text, structured_features, tokenize
 from .model import AdoptRankModel
 from .reranker import QwenReranker
@@ -135,6 +136,22 @@ class RankingIndex:
                 )
             )
         return results
+
+    def context_evidence(
+        self,
+        query: str,
+        token_budget: int = 2000,
+        limit: int = 5,
+        context: ProjectContext | None = None,
+    ):
+        ranked = self.search(query, max(limit * 2, 10), context)
+        repositories = {repo.full_name: repo for repo in self.repositories}
+        rerank = None
+        if self.reranker:
+            def rerank(rerank_query, documents):
+                return self.reranker.score(rerank_query, documents).tolist()
+
+        return select_external_code(query, ranked, repositories, token_budget, rerank)
 
     @staticmethod
     def _reason(repo):

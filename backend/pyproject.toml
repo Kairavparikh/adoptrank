@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adoptrank"
-version = "0.1.0"
-description = "Real-data repository discovery, adoption leaderboard, and contextual CLI"
+version = "0.2.0"
+description = "Repository discovery and token-budgeted code context for coding agents"
 readme = "PYPI_README.md"
 license = "MIT"
 authors = [{ name = "Kairav Parikh" }]

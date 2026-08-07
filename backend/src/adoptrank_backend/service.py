@@ -5,7 +5,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 
 from .config import settings
 from .index import RankingIndex
-from .schemas import SearchRequest, SearchResponse
+from .schemas import (
+    ContextEvidenceRequest,
+    ContextEvidenceResponse,
+    SearchRequest,
+    SearchResponse,
+)
 
 
 @asynccontextmanager
@@ -17,7 +22,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AdoptRank Ranking API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="AdoptRank Ranking API", version="0.2.0", lifespan=lifespan)
 
 
 def authorize(x_adoptrank_key: str | None = Header(default=None)) -> None:
@@ -68,4 +73,31 @@ def search_with_context(request: Request, payload: SearchRequest) -> SearchRespo
         results=results,
         model_version="qwen3-infonce-ranknet-v2",
         data_watermark=watermark,
+    )
+
+
+@app.post("/v1/context", response_model=ContextEvidenceResponse, dependencies=[Depends(authorize)])
+def context_evidence(request: Request, payload: ContextEvidenceRequest) -> ContextEvidenceResponse:
+    index: RankingIndex | None = request.app.state.index
+    if index is None:
+        raise HTTPException(status_code=503, detail="A trained model artifact has not been loaded")
+    evidence = index.context_evidence(
+        payload.query,
+        payload.token_budget,
+        payload.limit,
+        payload.project_context,
+    )
+    watermark = max((repo.captured_at for repo in index.repositories), default=None)
+    return ContextEvidenceResponse(
+        query=payload.query,
+        evidence=evidence,
+        estimated_tokens=sum(item.estimated_tokens for item in evidence),
+        token_budget=payload.token_budget,
+        model_version="qwen3-infonce-ranknet-context-v1",
+        data_watermark=watermark,
+        warnings=(
+            []
+            if evidence
+            else ["No indexed code excerpt passed the relevance and budget constraints."]
+        ),
     )

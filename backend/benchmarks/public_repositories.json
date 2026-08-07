@@ -1,0 +1,9 @@
+{
+  "repositories": [
+    {"full_name": "encode/httpx", "task_limit": 8},
+    {"full_name": "pallets/click", "task_limit": 8},
+    {"full_name": "go-chi/chi", "task_limit": 8},
+    {"full_name": "BurntSushi/ripgrep", "task_limit": 8},
+    {"full_name": "sindresorhus/p-limit", "task_limit": 8}
+  ]
+}

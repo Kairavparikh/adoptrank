@@ -1,0 +1,134 @@
+{
+  "task_count": 8,
+  "budget": 8000,
+  "mean_file_recall": 0.84375,
+  "mean_estimated_context_tokens": 2214.625,
+  "token_reduction": null,
+  "baseline_task_success": null,
+  "adoptrank_task_success": null,
+  "gates": {
+    "file_recall_at_least_0_80": true,
+    "token_reduction_at_least_0_30": false,
+    "task_success_within_0_05": false,
+    "has_controlled_task_results": false
+  },
+  "pivot_approved": false,
+  "results": [
+    {
+      "task_id": "sindresorhus/p-limit@ef37eb2f372d",
+      "query": "Fix detached limit.map calls (#108)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 2179,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@8907801ffa02",
+      "query": "Add `rejectOnClear` option",
+      "file_recall": 0.75,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts"
+      ],
+      "estimated_context_tokens": 2114,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@ce9d71cf1391",
+      "query": "Add test for shared context provider pattern",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/main.yml",
+        "index.d.ts",
+        "index.js",
+        "scripts/benchmarker.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 2775,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@24503f921c97",
+      "query": "Document recursive limiter deadlocks",
+      "file_recall": 0.0,
+      "retrieved_files": [],
+      "estimated_context_tokens": 105,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@870db0f54785",
+      "query": "Support options object in `pLimit()`",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "scripts/benchmarker.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 2097,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@1fb1407cb390",
+      "query": "Fix benchmarks",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "benchmark.js",
+        "scripts/benchmarker.js"
+      ],
+      "estimated_context_tokens": 840,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@d76231b44ec6",
+      "query": "Make `.map()` method accept an iterable, not just array (#98)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts",
+        "test.js"
+      ],
+      "estimated_context_tokens": 3370,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@9da5934aaf15",
+      "query": "Use native Node.js timers instead of delay package in tests",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts",
+        "scripts/benchmarker.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 4237,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    }
+  ],
+  "limitations": [
+    "Token counts are estimates until Claude telemetry supplies provider-reported usage.",
+    "Task-success fields must come from controlled Claude Code runs; this harness does not invent them."
+  ]
+}

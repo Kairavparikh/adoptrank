@@ -13,6 +13,12 @@ def main() -> None:
     collect.add_argument("--queries", type=Path, required=True)
     collect.add_argument("--output", type=Path, required=True)
     collect.add_argument("--per-query", type=int, default=25)
+    collect.add_argument(
+        "--shallow",
+        action="store_true",
+        help="Skip per-repository release, contributor, and PyPI calls for large catalog backfills",
+    )
+    collect.add_argument("--page-delay-seconds", type=float, default=0.0)
 
     dataset = commands.add_parser("dataset")
     dataset.add_argument("--snapshots", type=Path, nargs="+", required=True)
@@ -44,6 +50,72 @@ def main() -> None:
     find.add_argument("--no-context", action="store_true")
     find.add_argument("--dry-run", action="store_true")
     find.add_argument("--limit", type=int, default=10)
+
+    context = commands.add_parser("context")
+    context.add_argument("query")
+    context.add_argument("--path", type=Path, default=Path.cwd())
+    context.add_argument("--budget", type=int, default=8000)
+    context.add_argument("--api", default="https://adoptrank.vercel.app")
+    context.add_argument("--no-external", action="store_true")
+    context.add_argument("--json", action="store_true")
+
+    benchmark_context = commands.add_parser("benchmark-context")
+    benchmark_context.add_argument("--tasks", type=Path, required=True)
+    benchmark_context.add_argument("--output", type=Path, required=True)
+    benchmark_context.add_argument("--budget", type=int, default=8000)
+    benchmark_context.add_argument("--task-prefix")
+    benchmark_context.add_argument(
+        "--modal-rerank",
+        action="store_true",
+        help="Explicitly send benchmark candidates to the authenticated Modal Qwen reranker",
+    )
+    benchmark_context.add_argument("--trained-checkpoint", default="context-ranker.pt")
+    benchmark_context.add_argument(
+        "--trained-context-rerank",
+        action="store_true",
+        help="Use the persisted task-trained Qwen/PyTorch context head",
+    )
+
+    generate_tasks = commands.add_parser("generate-context-tasks")
+    generate_tasks.add_argument("--repo", type=Path, default=Path.cwd())
+    generate_tasks.add_argument("--output", type=Path, required=True)
+    generate_tasks.add_argument("--limit", type=int, default=50)
+
+    prepare_benchmark = commands.add_parser("prepare-context-benchmark")
+    prepare_benchmark.add_argument("--manifest", type=Path, required=True)
+    prepare_benchmark.add_argument("--cache", type=Path, required=True)
+    prepare_benchmark.add_argument("--output", type=Path, required=True)
+    prepare_benchmark.add_argument("--tasks-per-repo", type=int, default=10)
+    prepare_benchmark.add_argument("--depth", type=int, default=100)
+
+    claude_benchmark = commands.add_parser("run-claude-benchmark")
+    claude_benchmark.add_argument("--tasks", type=Path, required=True)
+    claude_benchmark.add_argument("--output", type=Path, required=True)
+    claude_benchmark.add_argument(
+        "--condition", choices=("baseline", "adoptrank", "both"), default="both"
+    )
+    claude_benchmark.add_argument("--max-tasks", type=int, default=1)
+    claude_benchmark.add_argument("--context-budget", type=int, default=8000)
+    claude_benchmark.add_argument("--model", default="sonnet")
+    claude_benchmark.add_argument("--max-budget-usd", type=float, default=1.0)
+    claude_benchmark.add_argument("--max-turns", type=int, default=12)
+    claude_benchmark.add_argument("--repetitions", type=int, choices=range(1, 6), default=1)
+    claude_benchmark.add_argument("--trained-context-rerank", action="store_true")
+    claude_benchmark.add_argument("--trained-checkpoint", default="context-ranker.pt")
+
+    context_dataset = commands.add_parser("context-dataset")
+    context_dataset.add_argument("--tasks", type=Path, required=True)
+    context_dataset.add_argument("--output", type=Path, required=True)
+    context_dataset.add_argument("--pairs-per-task", type=int, default=5)
+
+    train_context = commands.add_parser("train-context")
+    train_context.add_argument("--pairs", type=Path, required=True)
+    train_context.add_argument("--output", type=Path, required=True)
+    train_context.add_argument("--epochs", type=int, default=12)
+    train_context.add_argument("--embedding-dimension", type=int, default=1024)
+    train_context.add_argument("--max-pairs", type=int)
+    train_context.add_argument("--validation-fraction", type=float, default=0.20)
+    train_context.add_argument("--seed", type=int, default=17)
 
     vectorize = commands.add_parser("vectorize")
     vectorize.add_argument("--snapshots", type=Path, required=True)
@@ -82,7 +154,15 @@ def main() -> None:
     if args.command == "collect":
         from .collectors import collect_queries
 
-        count = asyncio.run(collect_queries(args.queries, args.output, args.per_query))
+        count = asyncio.run(
+            collect_queries(
+                args.queries,
+                args.output,
+                args.per_query,
+                hydrate_signals=not args.shallow,
+                page_delay_seconds=max(0.0, args.page_delay_seconds),
+            )
+        )
         print(f"collected={count} output={args.output}")
     elif args.command == "dataset":
         from .dataset import build_pairs, load_snapshots, write_pairs
@@ -148,6 +228,146 @@ def main() -> None:
             print(
                 f"{rank:02d} {result['full_name']}  {result['score']:.3f}\n   {result['url']}\n   {result['reason']}"
             )
+    elif args.command == "context":
+        import httpx
+
+        from .context_pack import (
+            build_context_pack,
+            render_context_pack,
+            search_external_code,
+            search_external_repositories,
+        )
+        from .local_scan import scan_project
+
+        external = []
+        external_code = []
+        external_error = None
+        if not args.no_external:
+            project = scan_project(args.path)
+            try:
+                external_code = search_external_code(
+                    args.query, project, args.api, max(200, int(args.budget * 0.35))
+                )
+            except httpx.HTTPError as error:
+                if isinstance(error, httpx.HTTPStatusError) and error.response.status_code in {404, 405}:
+                    try:
+                        external = search_external_repositories(args.query, project, args.api)
+                    except httpx.HTTPError as fallback_error:
+                        external_error = f"External repository evidence unavailable: {fallback_error}"
+                else:
+                    external_error = f"External code evidence unavailable: {error}"
+        pack = build_context_pack(
+            args.path, args.query, args.budget, external, external_code
+        )
+        if external_error:
+            pack.warnings.append(external_error)
+        print(pack.model_dump_json(indent=2) if args.json else render_context_pack(pack))
+    elif args.command == "benchmark-context":
+        from .context_benchmark import run_context_benchmark
+
+        candidate_reranker = None
+        if args.modal_rerank and args.trained_context_rerank:
+            raise SystemExit("Choose only one Modal context reranker")
+        if args.modal_rerank or args.trained_context_rerank:
+            import modal
+
+            function = modal.Function.from_name(
+                "adoptrank-ranker",
+                (
+                    "rerank_context_candidates_trained"
+                    if args.trained_context_rerank
+                    else "rerank_context_candidates"
+                ),
+            )
+
+            def candidate_reranker(query, documents):
+                if args.trained_context_rerank:
+                    return function.remote(query, documents, args.trained_checkpoint)
+                return function.remote(query, documents)
+
+        report = run_context_benchmark(
+            args.tasks,
+            args.output,
+            args.budget,
+            candidate_reranker=candidate_reranker,
+            task_prefix=args.task_prefix,
+        )
+        print(
+            f"tasks={report['task_count']} file_recall={report['mean_file_recall']:.3f} "
+            f"pivot_approved={str(report['pivot_approved']).lower()} output={args.output}"
+        )
+    elif args.command == "generate-context-tasks":
+        from .historical_tasks import generate_historical_tasks
+
+        tasks = generate_historical_tasks(args.repo, args.output, args.limit)
+        print(f"tasks={len(tasks)} output={args.output}")
+    elif args.command == "prepare-context-benchmark":
+        from .benchmark_corpus import prepare_public_benchmark
+
+        tasks = prepare_public_benchmark(
+            args.manifest,
+            args.cache,
+            args.output,
+            tasks_per_repository=args.tasks_per_repo,
+            depth=args.depth,
+        )
+        repositories = len({task["source_repository"] for task in tasks})
+        print(f"tasks={len(tasks)} repositories={repositories} output={args.output}")
+    elif args.command == "run-claude-benchmark":
+        from .claude_benchmark import run_claude_benchmark
+
+        candidate_reranker = None
+        context_model = "lexical-bm25-ast"
+        if args.trained_context_rerank:
+            import modal
+
+            function = modal.Function.from_name(
+                "adoptrank-ranker", "rerank_context_candidates_trained"
+            )
+
+            def candidate_reranker(query, documents):
+                return function.remote(query, documents, args.trained_checkpoint)
+
+            context_model = f"qwen3-context-ranknet:{args.trained_checkpoint}"
+        report = run_claude_benchmark(
+            args.tasks,
+            args.output,
+            args.condition,
+            args.max_tasks,
+            args.context_budget,
+            args.model,
+            args.max_budget_usd,
+            args.max_turns,
+            args.repetitions,
+            candidate_reranker,
+            context_model,
+        )
+        print(
+            f"tasks={report['task_count']} condition={report['condition']} "
+            f"maximum_authorized_cost_usd={report['maximum_authorized_cost_usd']:.2f} "
+            f"output={args.output}"
+        )
+    elif args.command == "context-dataset":
+        from .context_dataset import build_context_pairs
+
+        pairs = build_context_pairs(args.tasks, args.output, args.pairs_per_task)
+        print(f"pairs={len(pairs)} output={args.output}")
+    elif args.command == "train-context":
+        from .train_context import train_context_ranker
+
+        metrics = train_context_ranker(
+            args.pairs,
+            args.output,
+            args.epochs,
+            args.embedding_dimension,
+            args.max_pairs,
+            validation_fraction=args.validation_fraction,
+            seed=args.seed,
+        )
+        print(
+            f"pairs={metrics['training_pairs']} "
+            f"pair_accuracy={metrics['final']['pair_accuracy']:.3f} output={args.output}"
+        )
     elif args.command == "vectorize":
         from .config import settings
         from .vector_index import populate_pgvector

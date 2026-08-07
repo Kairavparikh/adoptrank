@@ -1,0 +1,22 @@
+{
+  "status": "preliminary",
+  "task_count": 5,
+  "task_source": "behaviorally verified historical AdoptRank commits",
+  "budget": 8000,
+  "mean_changed_file_recall": 0.88,
+  "mean_estimated_context_tokens": 3672.6,
+  "per_task_recall": {
+    "qwen_offline_ordering": 1.0,
+    "backend_ci_extras": 1.0,
+    "github_actions_node24": 0.4,
+    "neon_polling_pgvector": 1.0,
+    "modal_gpu_deployment": 1.0
+  },
+  "evaluator_validation": "Every evaluator fails on the parent commit and passes on the real target commit.",
+  "decision": "The preliminary retrieval recall gate passes, but the pivot remains unapproved until 30 controlled Claude A/B tasks meet every gate.",
+  "limitations": [
+    "Five tasks are insufficient for a production claim.",
+    "All tasks come from one repository.",
+    "The GitHub Actions migration changes five workflows but the context pack retrieved two."
+  ]
+}
