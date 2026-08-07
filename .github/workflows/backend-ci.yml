@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e 'backend[dev]'
+      - run: pip install -e 'backend[ml,ops,dev]'
       - run: pytest backend/tests -q
       - run: ruff check backend/src backend/tests
       - uses: actions/setup-node@v4
