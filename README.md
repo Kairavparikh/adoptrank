@@ -46,11 +46,14 @@ npm test
 
 The `adoptrank` command uses the public Vercel API by default. Vercel supplies the
 private Modal credential server-side, so users never need an AdoptRank API key.
-Install from a published GitHub checkout with `pipx`:
+Install the published CLI with `pipx`:
 
 ```bash
-pipx install "git+https://github.com/Kairavparikh/adoptrank.git#subdirectory=backend"
+pipx install adoptrank
 ```
+
+The GitHub source-install fallback is
+`pipx install "git+https://github.com/Kairavparikh/adoptrank.git#subdirectory=backend"`.
 
 Then run contextual search from any project or inspect the live leaderboard:
 
