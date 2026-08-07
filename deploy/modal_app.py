@@ -32,7 +32,6 @@ image = (
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONUNBUFFERED": "1",
             "TOKENIZERS_PARALLELISM": "false",
-            "HF_HUB_OFFLINE": "1",
             "MODEL_DIR": "/models/qwen",
             "EMBEDDING_MODEL": EMBEDDING_MODEL,
             "RERANKER_MODEL": RERANKER_MODEL,
@@ -42,6 +41,7 @@ image = (
         }
     )
     .run_function(download_qwen_models, timeout=60 * 30)
+    .env({"HF_HUB_OFFLINE": "1"})
     .add_local_dir(
         str(BACKEND_ROOT / "src" / "adoptrank_backend"),
         "/root/adoptrank_backend",
