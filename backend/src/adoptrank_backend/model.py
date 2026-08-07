@@ -1,70 +1,46 @@
-import hashlib
-
 import torch
 from torch import Tensor, nn
 
-from .features import tokenize
-
-
-class HashedTextEncoder(nn.Module):
-    def __init__(self, buckets: int = 65_536, dimension: int = 96) -> None:
-        super().__init__()
-        self.buckets = buckets
-        self.embedding = nn.EmbeddingBag(buckets, dimension, mode="mean")
-        nn.init.normal_(self.embedding.weight, std=0.02)
-
-    def token_id(self, token: str) -> int:
-        digest = hashlib.blake2b(token.encode(), digest_size=8, person=b"adoptrank").digest()
-        return int.from_bytes(digest, "little") % self.buckets
-
-    def forward(self, texts: list[str], device: torch.device) -> Tensor:
-        token_ids: list[int] = []
-        offsets: list[int] = []
-        for text in texts:
-            offsets.append(len(token_ids))
-            ids = [self.token_id(token) for token in tokenize(text)] or [0]
-            token_ids.extend(ids)
-        return self.embedding(
-            torch.tensor(token_ids, dtype=torch.long, device=device),
-            torch.tensor(offsets, dtype=torch.long, device=device),
-        )
-
 
 class AdoptRankModel(nn.Module):
-    def __init__(self, structured_features: int = 12, embedding_dimension: int = 96) -> None:
-        super().__init__()
-        self.text = HashedTextEncoder(dimension=embedding_dimension)
-        self.structured = nn.Sequential(
-            nn.Linear(structured_features, 64),
-            nn.LayerNorm(64),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(64, 64),
-            nn.GELU(),
-        )
-        combined = embedding_dimension * 4 + 64
-        self.ranker = nn.Sequential(
-            nn.Linear(combined, 256),
-            nn.LayerNorm(256),
-            nn.GELU(),
-            nn.Dropout(0.15),
-            nn.Linear(256, 96),
-            nn.GELU(),
-            nn.Linear(96, 1),
-        )
-        self.adoption_head = nn.Sequential(
-            nn.Linear(embedding_dimension + 64, 96),
-            nn.GELU(),
-            nn.Dropout(0.1),
-            nn.Linear(96, 1),
-        )
+    """Trainable projection and multi-objective heads over frozen Qwen3 embeddings."""
 
-    def forward(self, queries: list[str], repositories: list[str], features: Tensor) -> tuple[Tensor, Tensor]:
-        device = features.device
-        query = self.text(queries, device)
-        repository = self.text(repositories, device)
+    HEAD_NAMES = ("relevance", "adoption", "depth", "quality", "maintenance", "originality")
+
+    def __init__(
+        self, structured_features: int, embedding_dimension: int = 1024, projection_dimension: int = 256
+    ) -> None:
+        super().__init__()
+        self.query_projection = nn.Sequential(
+            nn.Linear(embedding_dimension, projection_dimension), nn.LayerNorm(projection_dimension)
+        )
+        self.repo_projection = nn.Sequential(
+            nn.Linear(embedding_dimension, projection_dimension), nn.LayerNorm(projection_dimension)
+        )
+        self.structured = nn.Sequential(nn.Linear(structured_features, 96), nn.LayerNorm(96), nn.GELU())
+        interaction_size = projection_dimension * 4 + 96
+        self.interaction = nn.Sequential(nn.Linear(interaction_size, 256), nn.GELU(), nn.Dropout(0.1))
+        self.heads = nn.ModuleDict({name: nn.Linear(256, 1) for name in self.HEAD_NAMES})
+
+    def forward(
+        self, query_embeddings: Tensor, repo_embeddings: Tensor, features: Tensor
+    ) -> dict[str, Tensor]:
+        query = torch.nn.functional.normalize(self.query_projection(query_embeddings), dim=1)
+        repo = torch.nn.functional.normalize(self.repo_projection(repo_embeddings), dim=1)
         structured = self.structured(features)
-        interaction = torch.cat([query, repository, query * repository, torch.abs(query - repository), structured], dim=1)
-        relevance = self.ranker(interaction).squeeze(1)
-        adoption = self.adoption_head(torch.cat([repository, structured], dim=1)).squeeze(1)
-        return relevance, adoption
+        hidden = self.interaction(
+            torch.cat([query, repo, query * repo, torch.abs(query - repo), structured], dim=1)
+        )
+        return {name: head(hidden).squeeze(1) for name, head in self.heads.items()} | {
+            "query": query,
+            "repo": repo,
+        }
+
+
+def info_nce_loss(query: Tensor, positive: Tensor, negatives: Tensor, temperature: float = 0.07) -> Tensor:
+    positive_logit = (query * positive).sum(dim=1, keepdim=True)
+    negative_logits = torch.einsum("bd,bnd->bn", query, negatives)
+    logits = torch.cat([positive_logit, negative_logits], dim=1) / temperature
+    return torch.nn.functional.cross_entropy(
+        logits, torch.zeros(len(query), dtype=torch.long, device=query.device)
+    )

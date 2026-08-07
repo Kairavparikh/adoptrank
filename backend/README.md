@@ -1,3 +1,13 @@
+---
+title: AdoptRank Qwen Ranking API
+emoji: 🔎
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # AdoptRank ranking backend
 
 This service collects real public repository signals, creates weakly supervised query/repository pairs, trains a PyTorch neural learning-to-rank model, and serves ranked results through FastAPI.

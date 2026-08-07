@@ -22,8 +22,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: adoptrank-backend collect --queries backend/seed_queries.txt --output "backend/data/snapshots/$(date -u +%F).jsonl" --per-query 25
+      - name: Index changed repository code with Tree-sitter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: adoptrank-backend analyze-code --snapshots "backend/data/snapshots/$(date -u +%F).jsonl" --output "backend/data/snapshots/$(date -u +%F)-code.jsonl" --limit 50 --files-per-repo 12
       - uses: actions/upload-artifact@v4
         with:
           name: adoptrank-snapshot-${{ github.run_id }}
-          path: backend/data/snapshots/*.jsonl
+          path: backend/data/snapshots/*-code.jsonl
           retention-days: 90

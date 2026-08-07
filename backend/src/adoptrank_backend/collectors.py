@@ -23,7 +23,9 @@ class GitHubCollector:
             headers=headers,
             timeout=settings.request_timeout_seconds,
         )
-        self.pypi = httpx.AsyncClient(timeout=settings.request_timeout_seconds, headers={"User-Agent": "AdoptRank/0.1"})
+        self.pypi = httpx.AsyncClient(
+            timeout=settings.request_timeout_seconds, headers={"User-Agent": "AdoptRank/0.1"}
+        )
 
     async def close(self) -> None:
         await self.client.aclose()
@@ -38,7 +40,9 @@ class GitHubCollector:
         return response.json()
 
     async def search(self, query: str, per_query: int = 25) -> list[RepositorySnapshot]:
-        payload = await self._get("/search/repositories", q=query, sort="stars", order="desc", per_page=min(per_query, 100))
+        payload = await self._get(
+            "/search/repositories", q=query, sort="stars", order="desc", per_page=min(per_query, 100)
+        )
         assert isinstance(payload, dict)
         semaphore = asyncio.Semaphore(8)
 
@@ -54,12 +58,16 @@ class GitHubCollector:
         contributors: list = []
         if self.authenticated:
             release_task = self.client.get(f"/repos/{full_name}/releases/latest")
-            contributors_task = self.client.get(f"/repos/{full_name}/contributors", params={"per_page": 30, "anon": "true"})
+            contributors_task = self.client.get(
+                f"/repos/{full_name}/contributors", params={"per_page": 30, "anon": "true"}
+            )
             release_response, contributors_response = await asyncio.gather(release_task, contributors_task)
             if release_response.status_code == 200:
                 latest_release_at = release_response.json().get("published_at")
             contributors = contributors_response.json() if contributors_response.status_code == 200 else []
-        package_name, downloads_1d, downloads_7d, downloads_30d, pypi_release = await self._pypi_signals(full_name.split("/")[-1])
+        package_name, downloads_1d, downloads_7d, downloads_30d, pypi_release = await self._pypi_signals(
+            full_name.split("/")[-1]
+        )
 
         license_data = item.get("license") or {}
         return RepositorySnapshot(
@@ -89,7 +97,9 @@ class GitHubCollector:
             source_query=source_query,
         )
 
-    async def _pypi_signals(self, repository_name: str) -> tuple[str | None, int | None, int | None, int | None, str | None]:
+    async def _pypi_signals(
+        self, repository_name: str
+    ) -> tuple[str | None, int | None, int | None, int | None, str | None]:
         candidates = [repository_name, repository_name.replace("_", "-"), repository_name.replace("-", "_")]
         for candidate in dict.fromkeys(candidates):
             metadata = await self.pypi.get(f"https://pypi.org/pypi/{candidate}/json")
@@ -108,7 +118,11 @@ class GitHubCollector:
 
 
 async def collect_queries(query_file: Path, output: Path, per_query: int = 25) -> int:
-    queries = [line.strip() for line in query_file.read_text().splitlines() if line.strip() and not line.startswith("#")]
+    queries = [
+        line.strip()
+        for line in query_file.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
     collector = GitHubCollector(settings.github_token)
     unique: dict[str, RepositorySnapshot] = {}
     try:

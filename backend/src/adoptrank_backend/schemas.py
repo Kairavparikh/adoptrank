@@ -36,6 +36,20 @@ class RepositorySnapshot(BaseModel):
     symbol_count: int = 0
     code_terms: list[str] = Field(default_factory=list)
     code_evidence_paths: list[str] = Field(default_factory=list)
+    architecture_summary: str = ""
+    code_chunks: list[str] = Field(default_factory=list)
+    quality_score: float = 0.0
+    depth_score: float = 0.0
+    originality_score: float = 0.0
+
+
+class ProjectContext(BaseModel):
+    root_name: str = ""
+    languages: list[str] = Field(default_factory=list)
+    frameworks: list[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+    symbols: list[str] = Field(default_factory=list)
+    summary: str = ""
 
 
 class TrainingPair(BaseModel):
@@ -58,6 +72,11 @@ class RankedRepository(BaseModel):
     updated_at: datetime | None
     source: str = "pytorch"
     code_evidence: list[str] = Field(default_factory=list)
+    relevance_score: float = 0.0
+    depth_score: float = 0.0
+    quality_score: float = 0.0
+    maintenance_score: float = 0.0
+    originality_score: float = 0.0
 
 
 class SearchResponse(BaseModel):
@@ -65,3 +84,9 @@ class SearchResponse(BaseModel):
     results: list[RankedRepository]
     model_version: str
     data_watermark: datetime | None
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=500)
+    limit: int = Field(default=10, ge=1, le=25)
+    project_context: ProjectContext | None = None

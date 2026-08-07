@@ -1,0 +1,65 @@
+{
+  "model_version": "qwen3-infonce-ranknet-v2",
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "reranker_model": "Qwen/Qwen3-Reranker-0.6B",
+  "training_pairs": 173,
+  "validation_pairs": 44,
+  "real_adoption_labels": 12,
+  "device": "mps",
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 1.0132486603476785,
+      "pair_accuracy": 0.6363636363636364,
+      "ndcg": 0.8657926376623483
+    },
+    {
+      "epoch": 2,
+      "loss": 0.7692238092422485,
+      "pair_accuracy": 0.5454545454545454,
+      "ndcg": 0.8322407970779352
+    },
+    {
+      "epoch": 3,
+      "loss": 0.6116802800785411,
+      "pair_accuracy": 0.5909090909090909,
+      "ndcg": 0.8490167173701416
+    },
+    {
+      "epoch": 4,
+      "loss": 0.33708997070789337,
+      "pair_accuracy": 0.5909090909090909,
+      "ndcg": 0.8490167173701416
+    },
+    {
+      "epoch": 5,
+      "loss": 0.16054470904848792,
+      "pair_accuracy": 0.6590909090909091,
+      "ndcg": 0.8741805978084515
+    },
+    {
+      "epoch": 6,
+      "loss": 0.09282936748455871,
+      "pair_accuracy": 0.7272727272727273,
+      "ndcg": 0.8993444782467612
+    },
+    {
+      "epoch": 7,
+      "loss": 0.07421588093381036,
+      "pair_accuracy": 0.7272727272727273,
+      "ndcg": 0.8993444782467612
+    },
+    {
+      "epoch": 8,
+      "loss": 0.05236887216398662,
+      "pair_accuracy": 0.6590909090909091,
+      "ndcg": 0.8741805978084515
+    }
+  ],
+  "final": {
+    "epoch": 8,
+    "loss": 0.05236887216398662,
+    "pair_accuracy": 0.6590909090909091,
+    "ndcg": 0.8741805978084515
+  }
+}

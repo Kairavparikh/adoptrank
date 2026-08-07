@@ -25,6 +25,9 @@ FEATURE_NAMES = (
     "example_coverage_proxy",
     "dependency_density",
     "symbol_density",
+    "quality_score",
+    "depth_score",
+    "originality_score",
 )
 
 
@@ -42,6 +45,7 @@ def repository_text(repo: RepositorySnapshot) -> str:
             repo.language,
             " ".join(repo.code_terms),
             " ".join(repo.code_evidence_paths),
+            repo.architecture_summary,
         ]
         if part
     )
@@ -79,6 +83,9 @@ def structured_features(repo: RepositorySnapshot, observed_at: datetime | None =
         min(1.0, repo.example_file_count / max(1.0, repo.source_file_count * 0.15)),
         min(1.0, repo.dependency_count / 80.0),
         min(1.0, repo.symbol_count / max(20.0, repo.source_file_count * 30.0)),
+        repo.quality_score,
+        repo.depth_score,
+        repo.originality_score,
     ]
     return np.asarray(values, dtype=np.float32)
 

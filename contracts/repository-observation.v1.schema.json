@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adoptrank.dev/contracts/repository-observation.v1.schema.json",
+  "type": "object",
+  "required": ["schema_version", "event_id", "source", "captured_at", "full_name", "html_url"],
+  "properties": {
+    "schema_version": { "const": "repository-observation.v1" },
+    "event_id": { "type": "string" },
+    "source": { "enum": ["github", "pypi", "npm", "deps_dev", "osv", "openssf"] },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "full_name": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+    "html_url": { "type": "string", "format": "uri" }
+  },
+  "additionalProperties": true
+}

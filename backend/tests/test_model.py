@@ -6,14 +6,10 @@ from adoptrank_backend.model import AdoptRankModel
 
 
 def test_ranker_forward_shapes_and_gradients() -> None:
-    model = AdoptRankModel(structured_features=len(FEATURE_NAMES))
+    model = AdoptRankModel(structured_features=len(FEATURE_NAMES), embedding_dimension=32)
     features = torch.tensor(np.zeros((2, len(FEATURE_NAMES)), dtype=np.float32))
-    relevance, adoption = model(
-        ["streaming anomaly detection", "payment retry library"],
-        ["python online anomaly detector", "typescript idempotent payment retries"],
-        features,
-    )
-    assert relevance.shape == (2,)
-    assert adoption.shape == (2,)
-    (relevance.mean() + adoption.mean()).backward()
-    assert model.text.embedding.weight.grad is not None
+    outputs = model(torch.randn(2, 32), torch.randn(2, 32), features)
+    assert outputs["relevance"].shape == (2,)
+    assert outputs["adoption"].shape == (2,)
+    (outputs["relevance"].mean() + outputs["adoption"].mean()).backward()
+    assert model.query_projection[0].weight.grad is not None

@@ -24,13 +24,17 @@ def test_real_feature_shape_and_growth() -> None:
     now = datetime.now(UTC)
     previous = repo("alpha", "Python", 100, now - timedelta(days=30))
     future = repo("alpha", "Python", 160, now)
-    assert structured_features(previous).shape == (17,)
+    assert structured_features(previous).shape == (20,)
     assert 0 < adoption_growth(previous, future) < 1
 
 
 def test_pair_builder_uses_repository_content() -> None:
     now = datetime.now(UTC)
-    snapshots = [repo("alpha", "Python", 100, now), repo("beta", "Python", 50, now), repo("gamma", "Rust", 70, now)]
+    snapshots = [
+        repo("alpha", "Python", 100, now),
+        repo("beta", "Python", 50, now),
+        repo("gamma", "Rust", 70, now),
+    ]
     pairs = build_pairs(snapshots)
     assert pairs
     assert all(len(tokenize(pair.query)) >= 2 for pair in pairs)

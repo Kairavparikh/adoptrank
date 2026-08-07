@@ -26,6 +26,23 @@ SOURCE_EXTENSIONS = {
     ".c",
     ".h",
 }
+LANGUAGE_BY_EXTENSION = {
+    ".py": "python",
+    ".rs": "rust",
+    ".ts": "typescript",
+    ".tsx": "tsx",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".go": "go",
+    ".java": "java",
+    ".kt": "kotlin",
+    ".swift": "swift",
+    ".rb": "ruby",
+    ".cpp": "cpp",
+    ".cc": "cpp",
+    ".c": "c",
+    ".h": "c",
+}
 SKIP_PARTS = {"node_modules", "vendor", "dist", "build", ".venv", "venv", "target", "generated"}
 DEPENDENCY_FILES = {
     "pyproject.toml",
@@ -45,8 +62,27 @@ GENERIC_IMPORT = re.compile(
     r"(?:import|from|require\s*\(|use|package)\s*[('\"]?([A-Za-z0-9_@./:-]+)", re.MULTILINE
 )
 STOP_WORDS = {
-    "const", "return", "self", "this", "from", "import", "class", "function", "public", "private",
-    "string", "number", "true", "false", "none", "async", "await", "with", "that", "tests", "test",
+    "const",
+    "return",
+    "self",
+    "this",
+    "from",
+    "import",
+    "class",
+    "function",
+    "public",
+    "private",
+    "string",
+    "number",
+    "true",
+    "false",
+    "none",
+    "async",
+    "await",
+    "with",
+    "that",
+    "tests",
+    "test",
 }
 
 
@@ -58,7 +94,9 @@ def _is_source(path: str) -> bool:
 def _priority(path: str) -> tuple[int, int, str]:
     lowered = path.lower()
     is_test = "test" in PurePosixPath(lowered).parts or PurePosixPath(lowered).name.startswith("test")
-    is_example = any(part in {"example", "examples", "demo", "demos"} for part in PurePosixPath(lowered).parts)
+    is_example = any(
+        part in {"example", "examples", "demo", "demos"} for part in PurePosixPath(lowered).parts
+    )
     return (0 if is_test else 1 if is_example else 2, lowered.count("/"), lowered)
 
 
@@ -79,18 +117,66 @@ def _extract_python(content: str) -> tuple[list[str], list[str]]:
     return symbols, dependencies
 
 
+def _tree_sitter_extract(path: str, content: str) -> tuple[list[str], list[str], list[str]]:
+    from tree_sitter_language_pack import get_parser
+
+    language = LANGUAGE_BY_EXTENSION.get(PurePosixPath(path.lower()).suffix)
+    if not language:
+        return [], [], []
+    tree = get_parser(language).parse(content.encode("utf-8", errors="ignore"))
+    symbols: list[str] = []
+    imports: list[str] = []
+    chunks: list[str] = []
+    stack = [tree.root_node]
+    symbol_types = {
+        "function_definition",
+        "function_declaration",
+        "method_definition",
+        "class_definition",
+        "class_declaration",
+        "struct_item",
+        "enum_item",
+        "trait_item",
+        "function_item",
+    }
+    import_types = {"import_statement", "import_declaration", "use_declaration", "use_list", "package_clause"}
+    source = content.encode("utf-8", errors="ignore")
+    while stack:
+        node = stack.pop()
+        if node.type in symbol_types:
+            name = node.child_by_field_name("name")
+            if name:
+                symbols.append(source[name.start_byte : name.end_byte].decode("utf-8", errors="ignore"))
+            snippet = source[node.start_byte : min(node.end_byte, node.start_byte + 2400)].decode(
+                "utf-8", errors="ignore"
+            )
+            chunks.append(f"File: {path}\n{snippet}")
+        elif node.type in import_types:
+            imports.extend(
+                IDENTIFIER.findall(source[node.start_byte : node.end_byte].decode("utf-8", errors="ignore"))
+            )
+        stack.extend(reversed(node.children))
+    return symbols, imports, chunks
+
+
 def extract_code_evidence(files: list[tuple[str, str]], all_paths: list[str], commit_sha: str) -> dict:
     symbols: list[str] = []
     dependencies: list[str] = []
+    chunks: list[str] = []
     terms: Counter[str] = Counter()
     for path, content in files:
-        if path.lower().endswith(".py"):
-            file_symbols, file_dependencies = _extract_python(content)
-        else:
-            file_symbols = GENERIC_SYMBOL.findall(content)
-            file_dependencies = GENERIC_IMPORT.findall(content)
+        try:
+            file_symbols, file_dependencies, file_chunks = _tree_sitter_extract(path, content)
+        except Exception:
+            file_chunks = []
+            if path.lower().endswith(".py"):
+                file_symbols, file_dependencies = _extract_python(content)
+            else:
+                file_symbols = GENERIC_SYMBOL.findall(content)
+                file_dependencies = GENERIC_IMPORT.findall(content)
         symbols.extend(file_symbols)
         dependencies.extend(file_dependencies)
+        chunks.extend(file_chunks)
         terms.update(
             token.lower()
             for token in IDENTIFIER.findall(" ".join([path, *file_symbols, *file_dependencies]))
@@ -100,6 +186,11 @@ def extract_code_evidence(files: list[tuple[str, str]], all_paths: list[str], co
     test_paths = [path for path in source_paths if "test" in path.lower()]
     example_paths = [path for path in source_paths if any(x in path.lower() for x in ("example", "demo"))]
     evidence_paths = [path for path, _ in files]
+    architecture = (
+        f"{len(source_paths)} source files; {len(test_paths)} test files; {len(example_paths)} examples; "
+        f"key symbols: {', '.join(list(dict.fromkeys(symbols))[:15])}; dependencies: "
+        f"{', '.join(list(dict.fromkeys(dependencies))[:15])}"
+    )
     return {
         "indexed_commit_sha": commit_sha,
         "source_file_count": len(source_paths),
@@ -109,6 +200,13 @@ def extract_code_evidence(files: list[tuple[str, str]], all_paths: list[str], co
         "symbol_count": len(set(symbols)),
         "code_terms": [term for term, _ in terms.most_common(60)],
         "code_evidence_paths": evidence_paths,
+        "architecture_summary": architecture,
+        "code_chunks": chunks[:40],
+        "quality_score": min(
+            1.0, (len(test_paths) / max(1, len(source_paths))) * 4 + (0.2 if example_paths else 0.0)
+        ),
+        "depth_score": min(1.0, len(set(symbols)) / max(10, len(files) * 8)),
+        "originality_score": min(1.0, len(set(terms)) / 80.0),
     }
 
 
@@ -129,19 +227,25 @@ class GitHubCodeAnalyzer:
         await self.raw.aclose()
 
     async def analyze(self, repo: RepositorySnapshot, file_budget: int = 8) -> RepositorySnapshot:
-        metadata = (await self.client.get(f"/repos/{repo.full_name}"))
+        metadata = await self.client.get(f"/repos/{repo.full_name}")
         metadata.raise_for_status()
         branch = metadata.json()["default_branch"]
         branch_response = await self.client.get(f"/repos/{repo.full_name}/branches/{branch}")
         branch_response.raise_for_status()
         commit_sha = branch_response.json()["commit"]["sha"]
-        tree_response = await self.client.get(f"/repos/{repo.full_name}/git/trees/{commit_sha}", params={"recursive": "1"})
+        tree_response = await self.client.get(
+            f"/repos/{repo.full_name}/git/trees/{commit_sha}", params={"recursive": "1"}
+        )
         tree_response.raise_for_status()
         paths = [item["path"] for item in tree_response.json().get("tree", []) if item.get("type") == "blob"]
         candidates = sorted((path for path in paths if _is_source(path)), key=_priority)
         test_candidates = [path for path in candidates if "test" in path.lower()]
         example_candidates = [
-            path for path in candidates if any(part in {"example", "examples", "demo", "demos"} for part in PurePosixPath(path.lower()).parts)
+            path
+            for path in candidates
+            if any(
+                part in {"example", "examples", "demo", "demos"} for part in PurePosixPath(path.lower()).parts
+            )
         ]
         core_candidates = [path for path in candidates if path not in {*test_candidates, *example_candidates}]
         manifests = [path for path in paths if PurePosixPath(path.lower()).name in DEPENDENCY_FILES]

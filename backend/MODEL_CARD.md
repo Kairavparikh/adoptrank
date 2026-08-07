@@ -1,33 +1,36 @@
-# AdoptRank PyTorch ranker: model card
+# AdoptRank Qwen ranker model card
 
-## Purpose
+## Model
 
-`pytorch-ranknet-v1` reranks repositories retrieved with BM25. It is not an LLM judge. A trainable hashed text tower represents the query and commit-pinned code/repository evidence, a structured tower represents code quality proxies plus real adoption and maintenance signals, and an interaction network produces the relevance score.
+`qwen3-infonce-ranknet-v2` combines Qwen3-Embedding-0.6B, a trainable PyTorch projection/multi-head network, and Qwen3-Reranker-0.6B. Production deployments may select the 4B members through environment variables without changing contracts.
+
+## Data
+
+The current run contains 76 real GitHub/PyPI repository snapshots, eight commit-pinned Tree-sitter source indexes, 240 syntax-aware code chunks, and 217 mined preference pairs. No simulated repositories or invented adoption observations are used.
 
 ## Objectives
 
-- Pairwise RankNet loss: a real positive repository should outrank a hard negative for the generated query.
-- Masked adoption loss: the adoption head learns only from an observed PyPI acceleration label or a later point-in-time snapshot.
+- InfoNCE contrastive loss over positive and hard-negative repositories.
+- Pairwise logistic RankNet relevance loss.
+- Masked adoption loss only where a real package acceleration/future observation exists.
+- Auxiliary depth, quality, maintenance, and originality regression heads.
 
-Missing adoption labels contribute no adoption gradient. Inference returns `null` when the checkpoint has no observed adoption labels.
+## Evaluation
 
-## Bootstrap result
+The deterministic time-ordered split contains 173 training and 44 validation pairs. After eight epochs, held-out pair accuracy is 0.659 and pair NDCG is 0.874. These are bootstrap weak-label metrics, not claims of human-level repository understanding; a manually judged benchmark and temporal adoption backtest remain required for publishable results.
 
-The first run used 76 repositories collected from GitHub and PyPI, producing 217 pairs. The chronological/deterministic split contained 173 training and 44 validation pairs. Pair accuracy and pair NDCG were both 1.0 after 18 epochs; this is a pipeline-validation result because the weak-label task is easier than a blinded human benchmark.
+## Retrieval and serving
 
-Only 12 examples had real PyPI acceleration labels. The adoption head is therefore experimental until repeated snapshots, package dependent growth, and a larger point-in-time dataset are available.
+1. BM25 and Qwen dense similarity retrieve 50 candidates.
+2. The PyTorch relevance head scores all candidates.
+3. Qwen3-Reranker cross-encodes the best configurable subset (20 by default; 50 on an appropriate GPU).
+4. Relevance, adoption, technical depth, quality, maintenance, and originality are returned separately.
+5. Every result includes a direct GitHub URL, indexed commit evidence, model version, and data watermark.
 
-The code-aware bootstrap indexes a bounded, balanced sample of implementation, test, example, and manifest files. Its features include code-derived capability terms, source/test/example counts, dependencies, public symbols, and evidence paths. This is a reproducible source analyzer, not whole-repository LLM judgment; the manually reviewed code-evidence benchmark remains a required milestone.
+## Safety and limitations
 
-The machine-readable report is in `reports/bootstrap-2026-08-06.json`.
-
-## Serving
-
-Retrieval and ranking are deliberately hybrid:
-
-1. BM25 retrieves up to 100 candidates.
-2. Explicit language constraints apply as hard filters when enough matches exist.
-3. The PyTorch model scores query–repository interactions.
-4. Normalized BM25, neural score, and query coverage are fused for the final result.
-
-Every served result contains the GitHub URL, model version, data watermark, and concise evidence.
+- Source analysis is bounded and can miss behavior outside selected files.
+- Test/example ratios are quality proxies, not proof of correctness.
+- Adoption labels are sparse and experimental.
+- CPU cross-encoding is supported for validation but does not meet the interactive production SLA; use a GPU or disable only the cross-encoder fallback.
+- Licenses and vulnerability signals are informational, not legal or security guarantees.

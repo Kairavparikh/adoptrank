@@ -5,107 +5,142 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from .config import settings
+from .embeddings import QwenEmbedder
 from .features import FEATURE_NAMES, repository_text, structured_features, tokenize
 from .model import AdoptRankModel
-from .schemas import RankedRepository, RepositorySnapshot
+from .reranker import QwenReranker
+from .schemas import ProjectContext, RankedRepository, RepositorySnapshot
 
 
 class RankingIndex:
     def __init__(self, model_dir: Path) -> None:
-        self.model_dir = model_dir
         self.repositories = self._load_repositories(model_dir / "repositories.jsonl")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = AdoptRankModel(structured_features=len(FEATURE_NAMES)).to(self.device)
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+        )
         checkpoint = torch.load(model_dir / "ranker.pt", map_location=self.device, weights_only=True)
+        self.embedding_dimension = checkpoint.get("embedding_dimension", settings.embedding_dimension)
+        self.embedder = QwenEmbedder(checkpoint.get("embedding_model"), self.embedding_dimension)
+        self.model = AdoptRankModel(len(FEATURE_NAMES), self.embedding_dimension).to(self.device)
         self.model.load_state_dict(checkpoint["state_dict"])
         self.model.eval()
-        metrics_path = model_dir / "metrics.json"
-        self.adoption_trained = False
-        if metrics_path.exists():
-            import json
-
-            self.adoption_trained = json.loads(metrics_path.read_text()).get("real_adoption_labels", 0) > 0
-        self.documents = [tokenize(repository_text(repo)) for repo in self.repositories]
-        self.document_frequency = Counter(token for document in self.documents for token in set(document))
-        self.average_length = sum(map(len, self.documents)) / max(1, len(self.documents))
+        self.reranker = None if settings.disable_reranker else QwenReranker()
+        self.texts = [repository_text(repo) for repo in self.repositories]
+        cache_path = model_dir / "embedding_cache.npz"
+        cache = np.load(cache_path, allow_pickle=False) if cache_path.exists() else None
+        if cache is not None:
+            cached = dict(zip(cache["texts"].tolist(), cache["vectors"], strict=True))
+            missing = [text for text in self.texts if text not in cached]
+            if missing:
+                cached.update(zip(missing, self.embedder.encode_documents(missing), strict=True))
+            self.repo_embeddings = np.stack([cached[text] for text in self.texts]).astype(np.float32)
+        else:
+            self.repo_embeddings = self.embedder.encode_documents(self.texts)
+        self.repo_embeddings = np.nan_to_num(self.repo_embeddings, nan=0.0, posinf=0.0, neginf=0.0)
+        self.repo_embeddings /= np.linalg.norm(self.repo_embeddings, axis=1, keepdims=True).clip(1e-8)
+        self.documents = [tokenize(text) for text in self.texts]
+        self.df = Counter(token for doc in self.documents for token in set(doc))
+        self.avg = sum(map(len, self.documents)) / max(1, len(self.documents))
+        if settings.warm_models:
+            self.embedder.encode_queries(["open-source repository search"])
+            if self.reranker and self.texts:
+                self.reranker.score("open-source repository search", [self.texts[0][:2000]])
 
     @staticmethod
-    def _load_repositories(path: Path) -> list[RepositorySnapshot]:
+    def _load_repositories(path):
         with path.open() as handle:
             return [RepositorySnapshot.model_validate_json(line) for line in handle if line.strip()]
 
-    def _bm25(self, query: str) -> list[tuple[int, float]]:
+    def _bm25(self, query):
         terms = tokenize(query)
-        scores: list[tuple[int, float]] = []
         total = len(self.documents)
-        for index, document in enumerate(self.documents):
-            counts = Counter(document)
+        scores = []
+        for i, doc in enumerate(self.documents):
+            counts = Counter(doc)
             score = 0.0
             for term in terms:
-                frequency = counts[term]
-                if not frequency:
-                    continue
-                inverse = math.log(1 + (total - self.document_frequency[term] + 0.5) / (self.document_frequency[term] + 0.5))
-                denominator = frequency + 1.2 * (1 - 0.75 + 0.75 * len(document) / max(1, self.average_length))
-                score += inverse * frequency * 2.2 / denominator
-            scores.append((index, score))
-        return sorted(scores, key=lambda item: item[1], reverse=True)
+                f = counts[term]
+                if f:
+                    score += (
+                        math.log(1 + (total - self.df[term] + 0.5) / (self.df[term] + 0.5))
+                        * f
+                        * 2.2
+                        / (f + 1.2 * (0.25 + 0.75 * len(doc) / max(1, self.avg)))
+                    )
+            scores.append(score)
+        return np.asarray(scores, dtype=np.float32)
 
     @torch.no_grad()
-    def search(self, query: str, limit: int = 10) -> list[RankedRepository]:
-        lexical = [(index, score) for index, score in self._bm25(query)[:100] if score > 0]
-        if not lexical:
-            lexical = self._bm25(query)[:100]
-        requested_languages = {
-            language
-            for language in ("python", "rust", "typescript", "javascript", "java", "go", "kotlin", "swift", "ruby")
-            if language in set(tokenize(query))
-        }
-        if requested_languages:
-            filtered = [item for item in lexical if self.repositories[item[0]].language.lower() in requested_languages]
-            if len(filtered) >= limit:
-                lexical = filtered
-        candidates = [index for index, _ in lexical]
-        repos = [self.repositories[index] for index in candidates]
-        features = torch.tensor(np.stack([structured_features(repo) for repo in repos]), device=self.device)
-        scores, adoption = self.model([query] * len(repos), [repository_text(repo) for repo in repos], features)
-        neural_scores = scores.cpu().tolist()
-        neural_min, neural_max = min(neural_scores), max(neural_scores)
-        lexical_max = max(score for _, score in lexical) or 1.0
-        query_terms = set(tokenize(query))
-        fused_scores = []
-        for repo, neural_score, (_, lexical_score) in zip(repos, neural_scores, lexical):
-            neural_normalized = (neural_score - neural_min) / max(1e-6, neural_max - neural_min)
-            lexical_normalized = lexical_score / lexical_max
-            coverage = len(query_terms & set(tokenize(repository_text(repo)))) / max(1, len(query_terms))
-            fused_scores.append(0.45 * lexical_normalized + 0.35 * neural_normalized + 0.20 * coverage)
-        adoption_values = torch.sigmoid(adoption).cpu().tolist() if self.adoption_trained else [None] * len(repos)
-        ranked = sorted(zip(repos, fused_scores, adoption_values), key=lambda item: item[1], reverse=True)
-        return [
-            RankedRepository(
-                full_name=repo.full_name,
-                url=repo.html_url,
-                description=repo.description,
-                score=float(score),
-                adoption_probability=float(adoption_probability) if adoption_probability is not None else None,
-                reason=self._reason(repo, adoption_probability),
-                language=repo.language,
-                license=repo.license_spdx,
-                updated_at=repo.pushed_at,
-                code_evidence=repo.code_evidence_paths[:3],
+    def search(self, query: str, limit: int = 10, context: ProjectContext | None = None):
+        context_text = ""
+        if context:
+            context_text = " Project context: " + " ".join(
+                [
+                    *context.languages,
+                    *context.frameworks,
+                    *context.dependencies,
+                    *context.symbols,
+                    context.summary,
+                ]
             )
-            for repo, score, adoption_probability in ranked[:limit]
-        ]
+        full_query = query + context_text
+        lexical = self._bm25(full_query)
+        qvec = self.embedder.encode_queries([full_query])[0]
+        qvec = np.nan_to_num(qvec, nan=0.0, posinf=0.0, neginf=0.0)
+        qvec /= max(1e-8, float(np.linalg.norm(qvec)))
+        dense = self.repo_embeddings @ qvec
+        hybrid = 0.45 * (lexical / max(1e-6, float(lexical.max()))) + 0.55 * ((dense + 1) / 2)
+        candidate_ids = np.argsort(-hybrid)[:50]
+        candidates = [self.repositories[i] for i in candidate_ids]
+        texts = [self.texts[i] for i in candidate_ids]
+        q = torch.tensor(np.stack([qvec] * len(candidates)), device=self.device)
+        r = torch.tensor(self.repo_embeddings[candidate_ids], device=self.device)
+        f = torch.tensor(np.stack([structured_features(x) for x in candidates]), device=self.device)
+        outputs = self.model(q, r, f)
+        learned = torch.sigmoid(outputs["relevance"]).cpu().numpy()
+        cross = learned.copy()
+        if self.reranker:
+            count = min(settings.rerank_candidates, len(texts))
+            cross[:count] = self.reranker.score(full_query, texts[:count])
+        if len(cross):
+            cross = 1 / (1 + np.exp(-np.clip(cross, -20, 20)))
+        final = 0.25 * hybrid[candidate_ids] + 0.25 * learned + 0.50 * cross
+        order = np.argsort(-final)[:limit]
+        results = []
+        for j in order:
+            repo = candidates[j]
+            heads = {
+                name: float(torch.sigmoid(outputs[name][j]).cpu())
+                for name in ("adoption", "depth", "quality", "maintenance", "originality")
+            }
+            results.append(
+                RankedRepository(
+                    full_name=repo.full_name,
+                    url=repo.html_url,
+                    description=repo.description,
+                    score=float(final[j]),
+                    adoption_probability=heads["adoption"],
+                    reason=self._reason(repo),
+                    language=repo.language,
+                    license=repo.license_spdx,
+                    updated_at=repo.pushed_at,
+                    source="qwen3-hybrid",
+                    code_evidence=repo.code_evidence_paths[:3],
+                    relevance_score=float(learned[j]),
+                    depth_score=heads["depth"],
+                    quality_score=heads["quality"],
+                    maintenance_score=heads["maintenance"],
+                    originality_score=heads["originality"],
+                )
+            )
+        return results
 
     @staticmethod
-    def _reason(repo: RepositorySnapshot, adoption_probability: float | None) -> str:
-        evidence = []
-        if repo.topics:
-            evidence.append(f"implements {', '.join(repo.topics[:2])}")
+    def _reason(repo):
+        evidence = [
+            f"implements {', '.join(repo.topics[:2])}" if repo.topics else "source-level capability match"
+        ]
         if repo.code_evidence_paths:
-            evidence.append(f"code verified in {', '.join(repo.code_evidence_paths[:2])}")
-        if repo.pypi_downloads_30d:
-            evidence.append(f"{repo.pypi_downloads_30d:,} recent PyPI downloads")
-        if adoption_probability is not None and adoption_probability >= 0.6:
-            evidence.append("strong learned adoption signals")
-        return "; ".join(evidence[:2]) or "matches the requested implementation and repository signals"
+            evidence.append(f"verified in {', '.join(repo.code_evidence_paths[:2])}")
+        return "; ".join(evidence)

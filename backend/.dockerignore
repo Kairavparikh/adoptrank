@@ -1,0 +1,7 @@
+.venv
+data
+reports
+tests
+__pycache__
+*.pyc
+artifacts/current

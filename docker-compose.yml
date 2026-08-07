@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: adoptrank
       POSTGRES_PASSWORD: adoptrank-local
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - adoptrank-postgres:/var/lib/postgresql/data
       - ./database/migrations:/docker-entrypoint-initdb.d:ro
@@ -14,13 +14,18 @@ services:
   ranker:
     build: ./backend
     environment:
-      MODEL_DIR: /models/current
+      MODEL_DIR: /models/qwen
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       DATABASE_URL: postgresql://adoptrank:adoptrank-local@postgres:5432/adoptrank
+      RANKER_API_KEY: ${RANKER_API_KEY:-}
+      DISABLE_RERANKER: ${DISABLE_RERANKER:-false}
+      RERANK_CANDIDATES: ${RERANK_CANDIDATES:-20}
+      WARM_MODELS: ${WARM_MODELS:-true}
+      HF_TOKEN: ${HF_TOKEN:-}
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/artifacts:/models
+      - ./backend/artifacts:/models:ro
       - ./backend/data:/app/data
     depends_on:
       - postgres

@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
+import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 
 from .config import settings
 from .index import RankingIndex
-from .schemas import SearchResponse
+from .schemas import SearchRequest, SearchResponse
 
 
 @asynccontextmanager
@@ -20,13 +21,20 @@ app = FastAPI(title="AdoptRank Ranking API", version="0.1.0", lifespan=lifespan)
 
 
 def authorize(x_adoptrank_key: str | None = Header(default=None)) -> None:
-    if settings.ranker_api_key and x_adoptrank_key != settings.ranker_api_key:
+    if settings.ranker_api_key and (
+        x_adoptrank_key is None or not secrets.compare_digest(x_adoptrank_key, settings.ranker_api_key)
+    ):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 @app.get("/health")
 def health(request: Request) -> dict:
-    return {"status": "ok", "model_loaded": request.app.state.index is not None}
+    return {
+        "status": "ok",
+        "model_loaded": request.app.state.index is not None,
+        "embedding_model": settings.embedding_model,
+        "reranker_model": None if settings.disable_reranker else settings.reranker_model,
+    }
 
 
 @app.get("/v1/search", response_model=SearchResponse, dependencies=[Depends(authorize)])
@@ -43,6 +51,21 @@ def search(
     return SearchResponse(
         query=query,
         results=results,
-        model_version="pytorch-ranknet-v1",
+        model_version="qwen3-infonce-ranknet-v2",
+        data_watermark=watermark,
+    )
+
+
+@app.post("/v1/search", response_model=SearchResponse, dependencies=[Depends(authorize)])
+def search_with_context(request: Request, payload: SearchRequest) -> SearchResponse:
+    index: RankingIndex | None = request.app.state.index
+    if index is None:
+        raise HTTPException(status_code=503, detail="A trained model artifact has not been loaded")
+    results = index.search(payload.query, payload.limit, payload.project_context)
+    watermark = max((repo.captured_at for repo in index.repositories), default=None)
+    return SearchResponse(
+        query=payload.query,
+        results=results,
+        model_version="qwen3-infonce-ranknet-v2",
         data_watermark=watermark,
     )

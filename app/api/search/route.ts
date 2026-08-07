@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const fallbackIds = [
   "salesforce/merlion",
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
       rankerUrl.searchParams.set("limit", "20");
       const response = await fetch(rankerUrl, {
         headers: process.env.RANKER_API_KEY ? { "x-adoptrank-key": process.env.RANKER_API_KEY } : {},
-        signal: AbortSignal.timeout(8_000),
+        signal: AbortSignal.timeout(25_000),
         cache: "no-store",
       });
       if (!response.ok) throw new Error(`ranker returned ${response.status}`);

@@ -10,11 +10,11 @@ The maintained product specification is in [docs/PRD.md](docs/PRD.md).
 - Evidence panel with code paths and adoption signals
 - Emerging, Durable, and Hidden Gem discovery views
 - Side-by-side repository comparison
-- Terminal and local-project integration concept
+- Safe terminal local-project scanner and VS Code integration
 - PostgreSQL + pgvector search API with a resilient preview fallback
 - Vercel-ready Next.js application
 - FastAPI model service with live GitHub/PyPI ingestion
-- PyTorch pairwise learning-to-rank model with a masked adoption head
+- Qwen3 embeddings and cross-encoder reranking with PyTorch InfoNCE, pairwise ranking, and multi-objective heads
 
 ## Local development
 
@@ -49,13 +49,14 @@ The Python backend lives in `backend/`. It now supports:
 
 - Real GitHub and PyPI snapshot collection
 - Optional PostgreSQL persistence during every collection
-- Weakly supervised pair construction with same-language hard negatives
-- A PyTorch RankNet relevance objective
-- A masked adoption objective trained only on observed labels
-- BM25 candidate generation, explicit language filters, and neural reranking
+- Tree-sitter source, test, example, symbol, dependency, and syntax-aware chunk extraction
+- Qwen3 code/repository embeddings persisted in pgvector
+- Hard-negative mining with InfoNCE and pairwise RankNet objectives
+- Masked adoption plus depth, quality, maintenance, and originality heads
+- BM25 + dense top-50 retrieval followed by bounded Qwen3 cross-encoder reranking
 - FastAPI `/health` and `/v1/search` endpoints
 
-The first bootstrap run collected 76 real repositories and produced 217 ranking pairs. See `backend/MODEL_CARD.md` and `backend/reports/bootstrap-2026-08-06.json` for honest metrics and limitations.
+The current Qwen run uses 76 real repositories and 217 preference pairs. Its held-out pair accuracy is 0.659 and NDCG is 0.874; see `backend/MODEL_CARD.md` for limitations.
 
 Configure the Vercel application to call a deployed model service with:
 

@@ -17,8 +17,7 @@ create table if not exists public.repositories (
   topics text[] not null default '{}',
   search_document tsvector generated always as (
     setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-    setweight(to_tsvector('simple', array_to_string(topics, ' ')), 'B')
+    setweight(to_tsvector('english', coalesce(description, '')), 'B')
   ) stored,
   github_updated_at timestamptz,
   indexed_commit_sha text,

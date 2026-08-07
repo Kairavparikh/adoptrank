@@ -1,0 +1,25 @@
+{
+  "name": "adoptrank-vscode",
+  "displayName": "AdoptRank",
+  "description": "Find open-source repositories ranked for the current workspace.",
+  "version": "0.1.0",
+  "publisher": "kairavparikh",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other", "Machine Learning"],
+  "activationEvents": ["onCommand:adoptrank.find", "onCommand:adoptrank.findSelection"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "adoptrank.find", "title": "AdoptRank: Find for Workspace" },
+      { "command": "adoptrank.findSelection", "title": "AdoptRank: Find for Selection" }
+    ],
+    "configuration": {
+      "title": "AdoptRank",
+      "properties": {
+        "adoptrank.apiUrl": { "type": "string", "default": "http://127.0.0.1:8000", "description": "AdoptRank inference API URL" }
+      }
+    }
+  },
+  "scripts": { "test": "node --check extension.js" },
+  "devDependencies": { "@types/vscode": "^1.90.0" }
+}

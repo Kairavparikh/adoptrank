@@ -1,0 +1,33 @@
+name: train-qwen-ranker
+
+on:
+  schedule:
+    - cron: "41 4 * * 0"
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e backend
+      - name: Collect weekly training corpus
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: adoptrank-backend collect --queries backend/seed_queries.txt --output backend/data/snapshots/latest.jsonl --per-query 50
+      - name: Build code-aware corpus
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: adoptrank-backend analyze-code --snapshots backend/data/snapshots/latest.jsonl --output backend/data/snapshots/code.jsonl --limit 100 --files-per-repo 12
+      - run: adoptrank-backend dataset --snapshots backend/data/snapshots/code.jsonl --output backend/data/training/pairs.jsonl
+      - run: adoptrank-backend train --dataset backend/data/training/pairs.jsonl --snapshots backend/data/snapshots/code.jsonl --model-dir backend/artifacts/qwen --epochs 18
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qwen-ranker-${{ github.run_id }}
+          path: backend/artifacts/qwen
+          retention-days: 90

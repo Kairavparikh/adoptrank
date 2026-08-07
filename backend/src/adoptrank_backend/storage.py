@@ -92,7 +92,9 @@ async def persist_code_analysis(database_url: str, snapshots: Iterable[Repositor
                         else "example"
                         if "example" in lowered or "demo" in lowered
                         else "dependency"
-                        if lowered.endswith(("pyproject.toml", "requirements.txt", "package.json", "cargo.toml", "go.mod"))
+                        if lowered.endswith(
+                            ("pyproject.toml", "requirements.txt", "package.json", "cargo.toml", "go.mod")
+                        )
                         else "implementation"
                     )
                     await connection.execute(

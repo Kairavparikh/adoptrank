@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 import shutil
 from pathlib import Path
 
@@ -33,6 +34,23 @@ def main() -> None:
     serve.add_argument("--model-dir", type=Path, default=Path("artifacts/current"))
     serve.add_argument("--port", type=int, default=8000)
 
+    scan = commands.add_parser("scan")
+    scan.add_argument("path", type=Path, nargs="?", default=Path.cwd())
+
+    find = commands.add_parser("find")
+    find.add_argument("query")
+    find.add_argument("--path", type=Path, default=Path.cwd())
+    find.add_argument("--api", default="http://127.0.0.1:8000")
+    find.add_argument("--no-context", action="store_true")
+    find.add_argument("--dry-run", action="store_true")
+    find.add_argument("--limit", type=int, default=10)
+
+    vectorize = commands.add_parser("vectorize")
+    vectorize.add_argument("--snapshots", type=Path, required=True)
+
+    persist = commands.add_parser("persist")
+    persist.add_argument("--snapshots", type=Path, required=True)
+
     args = parser.parse_args()
     if args.command == "collect":
         from .collectors import collect_queries
@@ -48,7 +66,9 @@ def main() -> None:
     elif args.command == "analyze-code":
         from .code_analysis import enrich_snapshot_file
 
-        count = asyncio.run(enrich_snapshot_file(args.snapshots, args.output, args.limit, args.files_per_repo))
+        count = asyncio.run(
+            enrich_snapshot_file(args.snapshots, args.output, args.limit, args.files_per_repo)
+        )
         print(f"code_indexed={count} output={args.output}")
     elif args.command == "train":
         from .train import train_model
@@ -58,12 +78,58 @@ def main() -> None:
         metrics = train_model(args.dataset, args.model_dir, args.epochs)
         print(f"model={args.model_dir} pair_accuracy={metrics['final']['pair_accuracy']:.4f}")
     elif args.command == "serve":
-        import os
-
         import uvicorn
 
         os.environ["MODEL_DIR"] = str(args.model_dir)
         uvicorn.run("adoptrank_backend.service:app", host="0.0.0.0", port=args.port)
+    elif args.command == "scan":
+        from .local_scan import scan_project
+
+        print(scan_project(args.path).model_dump_json(indent=2))
+    elif args.command == "find":
+        import json
+
+        import httpx
+
+        from .local_scan import scan_project
+
+        context = None if args.no_context else scan_project(args.path)
+        payload = {
+            "query": args.query,
+            "limit": args.limit,
+            "project_context": context.model_dump() if context else None,
+        }
+        if args.dry_run:
+            print(json.dumps(payload, indent=2))
+            return
+        headers = (
+            {"x-adoptrank-key": os.environ["RANKER_API_KEY"]} if os.environ.get("RANKER_API_KEY") else {}
+        )
+        response = httpx.post(f"{args.api.rstrip('/')}/v1/search", json=payload, headers=headers, timeout=180)
+        response.raise_for_status()
+        for rank, result in enumerate(response.json()["results"], 1):
+            print(
+                f"{rank:02d} {result['full_name']}  {result['score']:.3f}\n   {result['url']}\n   {result['reason']}"
+            )
+    elif args.command == "vectorize":
+        from .config import settings
+        from .vector_index import populate_pgvector
+
+        if not settings.database_url:
+            raise SystemExit("DATABASE_URL is required")
+        count = asyncio.run(populate_pgvector(settings.database_url, args.snapshots))
+        print(f"embedded_chunks={count}")
+    elif args.command == "persist":
+        from .config import settings
+        from .dataset import load_snapshots
+        from .storage import persist_code_analysis, persist_snapshots
+
+        if not settings.database_url:
+            raise SystemExit("DATABASE_URL is required")
+        snapshots = load_snapshots([args.snapshots])
+        observations = asyncio.run(persist_snapshots(settings.database_url, snapshots))
+        evidence = asyncio.run(persist_code_analysis(settings.database_url, snapshots))
+        print(f"observations={observations} code_evidence={evidence}")
 
 
 if __name__ == "__main__":
