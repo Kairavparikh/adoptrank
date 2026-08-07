@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -26,7 +26,7 @@ jobs:
         run: adoptrank analyze-code --snapshots backend/data/snapshots/latest.jsonl --output backend/data/snapshots/code.jsonl --limit 100 --files-per-repo 12
       - run: adoptrank dataset --snapshots backend/data/snapshots/code.jsonl --output backend/data/training/pairs.jsonl
       - run: adoptrank train --dataset backend/data/training/pairs.jsonl --snapshots backend/data/snapshots/code.jsonl --model-dir backend/artifacts/qwen --epochs 18
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: qwen-ranker-${{ github.run_id }}
           path: backend/artifacts/qwen
