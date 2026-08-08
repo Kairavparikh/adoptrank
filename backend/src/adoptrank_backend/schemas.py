@@ -118,8 +118,11 @@ class ContextPack(BaseModel):
     budget: int
     estimated_tokens: int
     snippets: list[ContextSnippet] = Field(default_factory=list)
+    related_paths: list[str] = Field(default_factory=list)
     external_repositories: list[ExternalRepositoryEvidence] = Field(default_factory=list)
     excluded_candidates: int = 0
+    route: str = "standard"
+    abstained: bool = False
     warnings: list[str] = Field(default_factory=list)
 
 

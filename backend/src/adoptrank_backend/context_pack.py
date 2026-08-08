@@ -1,6 +1,7 @@
 import math
 import os
 import re
+import time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,6 +63,9 @@ class ContextRoute:
     local_budget: int
     max_local_snippets: int
     max_snippets_per_path: int
+    snippet_char_limit: int
+    max_related_paths: int
+    use_model_reranker: bool = True
 
 
 NARROW_TASK_TERMS = {
@@ -76,6 +80,14 @@ NARROW_TASK_TERMS = {
     "workflow",
 }
 MULTI_SCOPE_TERMS = {"all", "across", "every", "multiple", "repository-wide", "workflows"}
+BROAD_CHANGE_TERMS = {
+    "deprecat",
+    "document",
+    "feature",
+    "scaffold",
+    "support",
+    "typing",
+}
 
 
 def estimate_tokens(text: str) -> int:
@@ -125,18 +137,58 @@ def route_context(query: str, budget: int) -> ContextRoute:
         phrase in lowered for phrase in ("repository wide", "repo-wide", "all github actions")
     )
     narrow_hits = len(terms & NARROW_TASK_TERMS)
+    is_routine_maintenance = bool(
+        re.search(r"\b(?:bump|pin|upgrade|version)\b", lowered)
+    ) and not is_multi_scope
+    if is_routine_maintenance:
+        return ContextRoute(
+            name="abstain-routine",
+            local_budget=0,
+            max_local_snippets=0,
+            max_snippets_per_path=0,
+            snippet_char_limit=0,
+            max_related_paths=0,
+            use_model_reranker=False,
+        )
     if not is_multi_scope and narrow_hits >= 2:
         return ContextRoute(
             name="narrow-local",
-            local_budget=min(900, max(500, budget // 4)),
-            max_local_snippets=2,
+            local_budget=min(300, budget),
+            max_local_snippets=1,
             max_snippets_per_path=1,
+            snippet_char_limit=650,
+            max_related_paths=2,
+            use_model_reranker=False,
+        )
+    if _query_identifiers(query) and not is_multi_scope:
+        return ContextRoute(
+            name="precise-symbol",
+            local_budget=min(350, budget),
+            max_local_snippets=1,
+            max_snippets_per_path=1,
+            snippet_char_limit=700,
+            max_related_paths=4,
+        )
+    is_broad = is_multi_scope or bool(terms & BROAD_CHANGE_TERMS) or any(
+        phrase in lowered
+        for phrase in ("drop python", "docs and changelog", "add tests", "default compressible")
+    )
+    if is_broad:
+        return ContextRoute(
+            name="multi-file",
+            local_budget=min(750, budget),
+            max_local_snippets=3,
+            max_snippets_per_path=1,
+            snippet_char_limit=700,
+            max_related_paths=16,
         )
     return ContextRoute(
-        name="multi-file" if is_multi_scope else "standard",
-        local_budget=max(600, min(int(budget * 0.60), 600 + len(terms) * 350)),
-        max_local_snippets=12,
-        max_snippets_per_path=2,
+        name="standard",
+        local_budget=min(500, budget),
+        max_local_snippets=2,
+        max_snippets_per_path=1,
+        snippet_char_limit=700,
+        max_related_paths=10,
     )
 
 
@@ -443,24 +495,45 @@ def build_context_pack(
         used += item.estimated_tokens
         code_used += item.estimated_tokens
 
+    route = route_context(query, budget)
+    if route.name == "abstain-routine":
+        return ContextPack(
+            query=query,
+            project=project,
+            budget=budget,
+            estimated_tokens=0,
+            route=route.name,
+            abstained=True,
+            warnings=[
+                "Retrieval abstained because the task is a routine version or dependency edit.",
+                "The downstream coding agent receives its unchanged baseline prompt.",
+            ],
+        )
+
     candidates = _local_candidates(root, query)
-    if candidate_reranker and candidates:
+    if candidate_reranker and route.use_model_reranker and candidates:
         candidates_by_path: dict[str, list[_Candidate]] = {}
         for candidate in candidates:
             candidates_by_path.setdefault(candidate.path, []).append(candidate)
-        rerank_paths = list(candidates_by_path)[:50]
+        rerank_paths = list(candidates_by_path)[:40]
         documents = []
         for path in rerank_paths:
             excerpts = candidates_by_path[path][:3]
             documents.append(
                 path
                 + "\n"
-                + "\n\n".join(excerpt.content for excerpt in excerpts)[:7000]
+                + "\n\n".join(excerpt.content for excerpt in excerpts)[:1800]
             )
-        scores = candidate_reranker(
-            query,
-            documents,
-        )
+        scores = None
+        for attempt in range(3):
+            try:
+                scores = candidate_reranker(query, documents)
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                time.sleep(2**attempt)
+        assert scores is not None
         if len(scores) != len(rerank_paths):
             raise ValueError("Candidate reranker returned the wrong number of scores")
         path_scores = dict(zip(rerank_paths, scores, strict=True))
@@ -477,7 +550,6 @@ def build_context_pack(
             candidates,
             key=lambda item: (-item.score, item.path, item.start_line),
         )
-    route = route_context(query, budget)
     selected_per_path: dict[str, int] = {}
     local_used = 0
     local_count = 0
@@ -487,14 +559,15 @@ def build_context_pack(
             break
         if selected_per_path.get(item.path, 0) >= route.max_snippets_per_path:
             continue
-        tokens = estimate_tokens(item.path + item.content)
+        compact_content = item.content[: route.snippet_char_limit].rstrip()
+        tokens = estimate_tokens(item.path + compact_content)
         if used + tokens > budget or local_used + tokens > local_budget:
             continue
         snippets.append(
             ContextSnippet(
                 source="local",
                 path=item.path,
-                content=item.content,
+                content=compact_content,
                 score=item.score,
                 estimated_tokens=tokens,
                 start_line=item.start_line,
@@ -508,6 +581,17 @@ def build_context_pack(
     selected_keys = {
         (item.path, item.start_line) for item in snippets if item.source == "local"
     }
+    related_paths: list[str] = []
+    for item in candidates:
+        if item.path in related_paths:
+            continue
+        path_tokens = estimate_tokens(item.path) + 2
+        if used + path_tokens > budget:
+            break
+        related_paths.append(item.path)
+        used += path_tokens
+        if len(related_paths) >= route.max_related_paths:
+            break
     warnings = [
         "Token counts are portable estimates, not provider billing counts.",
         f"Context route: {route.name}.",
@@ -520,15 +604,19 @@ def build_context_pack(
         budget=budget,
         estimated_tokens=used,
         snippets=snippets,
+        related_paths=related_paths,
         external_repositories=external_selected,
         excluded_candidates=sum(
             (item.path, item.start_line) not in selected_keys for item in candidates
         ),
+        route=route.name,
         warnings=warnings,
     )
 
 
 def render_context_pack(pack: ContextPack) -> str:
+    if pack.abstained:
+        return ""
     lines = [
         f"# AdoptRank context: {pack.query}",
         "",
@@ -550,6 +638,10 @@ def render_context_pack(pack: ContextPack) -> str:
         lines.append("")
     github_snippets = [item for item in pack.snippets if item.source == "github"]
     local_snippets = [item for item in pack.snippets if item.source == "local"]
+    if pack.related_paths:
+        lines.extend(["## Ranked local file map", ""])
+        lines.extend(f"- {path}" for path in pack.related_paths)
+        lines.append("")
     if github_snippets:
         lines.extend(["## GitHub implementation context", ""])
         for item in github_snippets:

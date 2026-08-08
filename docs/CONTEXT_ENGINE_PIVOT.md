@@ -331,6 +331,20 @@ p95 latency was 24.7 seconds. This partial result is inconclusive and explicitly
 pivot. The harness now excludes nonzero/provider-error executions from every metric and stops immediately
 on errors such as insufficient credit, preventing an incomplete paid run from appearing as a valid sample.
 
+A subsequent value-aware router separates a low-token ranked file map from one to three compact code
+excerpts and deliberately abstains on routine dependency/version edits. Across all 40 public tasks it
+retains 81.0% engaged-task changed-file recall with 10% abstention, 355 mean rendered tokens (down 88%
+from 3,049), and 2.995-second hosted p95 retrieval latency. Qwen reranking now embeds candidate documents
+in GPU batches of 16 and retries transient Modal transport failures.
+
+The next paid run atomically checkpointed 26 valid pairs before the added provider balance was exhausted.
+AdoptRank used 19.2% fewer provider-reported processed input tokens, cost 9.5% less, and improved hidden
+contract completion from 28.9% to 31.1%, but used 9.6% more one-time repository tool/output context. The
+95% repository-context reduction interval still crossed zero. Therefore the 30% token-saving claim remains
+unapproved. The benchmark now checkpoints every individual condition, resumes without repeating valid
+calls, discards zero-cost provider failures, and reuses the baseline result when the router deliberately
+abstains instead of paying for a statistically noisy identical prompt.
+
 ### Stage 2 — Retrieval accuracy
 
 - In progress: the live catalog contains 4,967 repositories and 18,812 observations; the first

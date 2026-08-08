@@ -102,6 +102,11 @@ def main() -> None:
     claude_benchmark.add_argument("--repetitions", type=int, choices=range(1, 6), default=1)
     claude_benchmark.add_argument("--trained-context-rerank", action="store_true")
     claude_benchmark.add_argument("--trained-checkpoint", default="context-ranker.pt")
+    claude_benchmark.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume an atomically checkpointed benchmark without repeating completed conditions",
+    )
 
     context_dataset = commands.add_parser("context-dataset")
     context_dataset.add_argument("--tasks", type=Path, required=True)
@@ -341,10 +346,13 @@ def main() -> None:
             args.repetitions,
             candidate_reranker,
             context_model,
+            args.resume,
         )
         print(
             f"tasks={report['task_count']} condition={report['condition']} "
             f"maximum_authorized_cost_usd={report['maximum_authorized_cost_usd']:.2f} "
+            f"maximum_additional_authorized_cost_usd="
+            f"{report['maximum_additional_authorized_cost_usd']:.2f} "
             f"output={args.output}"
         )
     elif args.command == "context-dataset":

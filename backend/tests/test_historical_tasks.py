@@ -32,11 +32,15 @@ def test_generates_and_replays_parent_commit(tmp_path: Path) -> None:
     assert tasks[0]["expected_files"] == ["payments.py"]
     assert tasks[0]["patch_contract"][0]["required_lines"]
     with materialize_task_repository(repo, tasks[0]["base_commit"]) as parent:
-        success, _ = _run_task_evaluator(parent, tasks[0])
+        success, score, assertions, _ = _run_task_evaluator(parent, tasks[0])
         assert success is False
+        assert score is not None and score < 1
+        assert assertions > 0
     with materialize_task_repository(repo, tasks[0]["target_commit"]) as target:
-        success, _ = _run_task_evaluator(target, tasks[0])
+        success, score, assertions, _ = _run_task_evaluator(target, tasks[0])
         assert success is True
+        assert score == 1
+        assert assertions > 0
     report = run_context_benchmark(tasks_path, tmp_path / "report.json", budget=700)
     assert report["task_count"] == 1
     assert report["results"][0]["file_recall"] == 1.0

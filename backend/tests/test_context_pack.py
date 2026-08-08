@@ -57,6 +57,7 @@ def test_context_pack_is_relevant_safe_and_budgeted(tmp_path: Path) -> None:
     )
     assert pack.estimated_tokens <= pack.budget
     assert pack.snippets[0].path in {"payments/webhooks.py", "tests/test_webhooks.py"}
+    assert pack.related_paths
     assert "never-include" not in pack.model_dump_json()
     assert "hardcoded.py" not in {item.path for item in pack.snippets}
     assert pack.external_repositories[0].full_name == "example/stripe-worker"
@@ -74,15 +75,25 @@ def test_narrow_operational_task_uses_small_context_route(tmp_path: Path) -> Non
     pack = build_context_pack(tmp_path, "Install development extras in CI", budget=8000)
 
     assert route.name == "narrow-local"
-    assert route.local_budget == 900
-    assert len([item for item in pack.snippets if item.source == "local"]) <= 2
-    assert estimate_tokens(render_context_pack(pack)) < 1500
+    assert route.local_budget == 300
+    assert len([item for item in pack.snippets if item.source == "local"]) <= 1
+    assert estimate_tokens(render_context_pack(pack)) < 700
 
 
 def test_repository_wide_task_keeps_multi_file_route() -> None:
     route = route_context("Upgrade all GitHub Actions workflows to Node 24", 8000)
     assert route.name == "multi-file"
-    assert route.max_local_snippets == 12
+    assert route.max_local_snippets == 3
+
+
+def test_routine_version_task_abstains_without_injecting_context(tmp_path: Path) -> None:
+    _project(tmp_path)
+    pack = build_context_pack(tmp_path, "Bump actions/setup-python from 5 to 6", budget=8000)
+    assert pack.abstained is True
+    assert pack.route == "abstain-routine"
+    assert pack.snippets == []
+    assert pack.related_paths == []
+    assert render_context_pack(pack) == ""
 
 
 def test_candidate_reranker_controls_second_stage_order(tmp_path: Path) -> None:

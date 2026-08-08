@@ -129,6 +129,18 @@ adoptrank run-claude-benchmark \
   --trained-context-rerank
 ```
 
+The runner atomically checkpoints after every condition. If a provider,
+network, or local interruption stops a paid benchmark, resume without
+repeating completed calls:
+
+```bash
+adoptrank run-claude-benchmark \
+  --tasks /path/to/30-plus-verified-tasks.jsonl \
+  --output /tmp/claude-ab-final.json \
+  --condition both --max-tasks 30 --repetitions 1 --max-budget-usd 0.15 \
+  --trained-context-rerank --resume
+```
+
 That command authorizes at most $18 because it runs two conditions twice for
 30 tasks. Use one repetition for a $9 maximum first; the runner prints the
 maximum authorized cost before returning.

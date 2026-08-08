@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from .context_pack import build_context_pack, estimate_tokens, render_context_pack
+from .context_pack import route_context
 from .historical_tasks import materialize_task_repository
 
 
@@ -129,12 +130,32 @@ def _valid_benchmark_run(run: dict) -> bool:
     return int(run.get("exit_code") or 0) == 0
 
 
-def _run_task_evaluator(root: Path, task: dict) -> tuple[bool | None, str]:
+def _reuse_baseline_for_abstention(baseline: dict) -> dict:
+    """Represent an exact baseline fallback without a second stochastic paid call."""
+    reused = dict(baseline)
+    reused.update(
+        {
+            "condition": "adoptrank",
+            "reused_baseline": True,
+            "context_estimated_tokens": 0,
+            "context_latency_ms": 0.0,
+            "retrieved_files": [],
+            "retrieval_file_recall": None,
+            "retrieval_abstained": True,
+        }
+    )
+    return reused
+
+
+def _run_task_evaluator(
+    root: Path, task: dict
+) -> tuple[bool | None, float | None, int, str]:
     command = task.get("test_command")
     if command:
         result = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=600)
         output = (result.stdout + "\n" + result.stderr).strip()
-        return result.returncode == 0, output[-6000:]
+        success = result.returncode == 0
+        return success, float(success), 1, output[-6000:]
     contracts = task.get("patch_contract") or []
     if contracts:
         failures = []
@@ -147,9 +168,17 @@ def _run_task_evaluator(root: Path, task: dict) -> tuple[bool | None, str]:
                 failures.append(
                     {"path": contract["path"], "missing": missing, "retained": retained}
                 )
-        return not failures, json.dumps({"contract_failures": failures})
+        assertion_count = sum(
+            len(contract.get("required_lines", [])) + len(contract.get("forbidden_lines", []))
+            for contract in contracts
+        )
+        failed_assertions = sum(
+            len(failure["missing"]) + len(failure["retained"]) for failure in failures
+        )
+        score = 1.0 - failed_assertions / max(1, assertion_count)
+        return not failures, score, assertion_count, json.dumps({"contract_failures": failures})
     if not command:
-        return None, "No task-specific test command was supplied."
+        return None, None, 0, "No task-specific test command was supplied."
     raise AssertionError("unreachable")
 
 
@@ -187,10 +216,11 @@ def _run_condition(
             context_estimate = estimate_tokens(context_text)
             retrieved_files = sorted(
                 {snippet.path for snippet in pack.snippets if snippet.source == "local"}
+                | set(pack.related_paths)
             )
             retrieval_file_recall = len(
                 set(task.get("expected_files", [])) & set(retrieved_files)
-            ) / max(1, len(task.get("expected_files", [])))
+            ) / max(1, len(task.get("expected_files", []))) if not pack.abstained else None
         prompt = (
             f"Implement this task in the current repository: {task['query']}\n\n"
             "Make the smallest correct change. Do not merely explain the solution. "
@@ -234,7 +264,9 @@ def _run_condition(
         changed_files = sorted(
             path for path in set(before) | set(after) if before.get(path) != after.get(path)
         )
-        test_success, test_output = _run_task_evaluator(root, task)
+        test_success, task_score, task_assertion_count, test_output = _run_task_evaluator(
+            root, task
+        )
         patches = {}
         for path in changed_files:
             if path not in before_text and path not in after_text:
@@ -262,11 +294,14 @@ def _run_condition(
                 / max(1, len(task.get("expected_files", [])))
             ),
             "task_success": test_success,
+            "task_score": task_score,
+            "task_assertion_count": task_assertion_count,
             "test_output": test_output,
             "context_estimated_tokens": context_estimate,
             "context_latency_ms": context_latency_ms,
             "retrieved_files": retrieved_files,
             "retrieval_file_recall": retrieval_file_recall,
+            "retrieval_abstained": condition == "adoptrank" and pack.abstained,
             **trace,
             **_usage(payload),
         }
@@ -314,6 +349,11 @@ def _summary(results: list[dict]) -> dict:
         for pair in pairs
         if pair[1]["retrieval_file_recall"] is not None
     ]
+    abstention_rate = (
+        sum(bool(pair[1].get("retrieval_abstained")) for pair in pairs) / len(pairs)
+        if pairs
+        else None
+    )
     latencies = sorted(pair[1]["context_latency_ms"] for pair in pairs)
     p95_latency = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))] if latencies else None
     baseline_success = (
@@ -321,6 +361,19 @@ def _summary(results: list[dict]) -> dict:
     )
     adoptrank_success = (
         sum(bool(pair[1]["task_success"]) for pair in scored) / len(scored) if scored else None
+    )
+    value_scored = [
+        pair for pair in pairs if all(run.get("task_score") is not None for run in pair)
+    ]
+    baseline_task_score = (
+        sum(float(pair[0]["task_score"]) for pair in value_scored) / len(value_scored)
+        if value_scored
+        else None
+    )
+    adoptrank_task_score = (
+        sum(float(pair[1]["task_score"]) for pair in value_scored) / len(value_scored)
+        if value_scored
+        else None
     )
     token_reduction = 1 - adoptrank_tokens / baseline_tokens if baseline_tokens else None
     repository_token_reduction = (
@@ -369,7 +422,18 @@ def _summary(results: list[dict]) -> dict:
             and adoptrank_success is not None
             and adoptrank_success >= baseline_success - 0.05
         ),
+        "baseline_task_score_at_least_0_30": (
+            baseline_task_score is not None and baseline_task_score >= 0.30
+        ),
+        "task_score_within_0_05": (
+            baseline_task_score is not None
+            and adoptrank_task_score is not None
+            and adoptrank_task_score >= baseline_task_score - 0.05
+        ),
         "retrieval_file_recall_at_least_0_80": mean_recall is not None and mean_recall >= 0.80,
+        "retrieval_abstention_at_most_0_25": (
+            abstention_rate is not None and abstention_rate <= 0.25
+        ),
         "context_p95_below_3000_ms": p95_latency is not None and p95_latency < 3000,
         "repository_token_reduction_ci95_above_zero": (
             repository_reduction_ci95 is not None and repository_reduction_ci95[0] > 0
@@ -382,11 +446,14 @@ def _summary(results: list[dict]) -> dict:
         "unique_controlled_tasks": len(scored_task_ids),
         "baseline_task_success": baseline_success,
         "adoptrank_task_success": adoptrank_success,
+        "baseline_task_score": baseline_task_score,
+        "adoptrank_task_score": adoptrank_task_score,
         "processed_input_token_reduction": token_reduction,
         "repository_context_token_reduction": repository_token_reduction,
         "repository_context_token_reduction_ci95": repository_reduction_ci95,
         "estimated_cost_reduction": cost_reduction,
         "mean_retrieval_file_recall": mean_recall,
+        "retrieval_abstention_rate": abstention_rate,
         "context_p95_latency_ms": p95_latency,
         "gates": gates,
         "pivot_approved": all(gates.values()),
@@ -405,64 +472,179 @@ def run_claude_benchmark(
     repetitions: int = 1,
     candidate_reranker=None,
     context_model: str = "lexical-bm25-ast",
+    resume: bool = False,
 ) -> dict:
-    tasks = [json.loads(line) for line in tasks_path.read_text().splitlines() if line.strip()]
+    tasks_text = tasks_path.read_text()
+    tasks = [json.loads(line) for line in tasks_text.splitlines() if line.strip()]
+    selected_tasks = tasks[:max_tasks]
     selected_conditions = ["baseline", "adoptrank"] if condition == "both" else [condition]
-    results = []
+    configuration = {
+        "tasks_sha256": hashlib.sha256(tasks_text.encode()).hexdigest(),
+        "task_ids": [task.get("task_id") for task in selected_tasks],
+        "condition": condition,
+        "context_budget": context_budget,
+        "model": model,
+        "max_budget_usd": max_budget_usd,
+        "max_turns": max_turns,
+        "repetitions": repetitions,
+        "context_model": context_model,
+    }
+    results: list[dict] = []
+    if resume:
+        if not output_path.exists():
+            raise ValueError(f"Cannot resume because checkpoint does not exist: {output_path}")
+        checkpoint = json.loads(output_path.read_text())
+        if checkpoint.get("configuration") != configuration:
+            raise ValueError("Resume configuration does not match the existing checkpoint")
+        results = checkpoint.get("results", [])
+        for item in results:
+            item["runs"] = [run for run in item.get("runs", []) if _valid_benchmark_run(run)]
+            task = next(
+                (task for task in selected_tasks if task.get("task_id") == item.get("task_id")),
+                None,
+            )
+            if task is None:
+                continue
+            contracts = task.get("patch_contract") or []
+            assertion_count = sum(
+                len(contract.get("required_lines", []))
+                + len(contract.get("forbidden_lines", []))
+                for contract in contracts
+            )
+            for run in item["runs"]:
+                if run.get("task_score") is not None:
+                    continue
+                if task.get("test_command"):
+                    run["task_score"] = float(bool(run.get("task_success")))
+                    run["task_assertion_count"] = 1
+                    continue
+                if not contracts:
+                    continue
+                try:
+                    failures = json.loads(run.get("test_output") or "{}").get(
+                        "contract_failures", []
+                    )
+                except json.JSONDecodeError:
+                    continue
+                failed = sum(
+                    len(failure.get("missing", [])) + len(failure.get("retained", []))
+                    for failure in failures
+                )
+                run["task_score"] = 1.0 - failed / max(1, assertion_count)
+                run["task_assertion_count"] = assertion_count
     stopped_early = False
     stop_reason = None
     if repetitions < 1 or repetitions > 5:
         raise ValueError("repetitions must be between 1 and 5")
-    for task_index, task in enumerate(tasks[:max_tasks]):
+
+    def write_checkpoint() -> dict:
+        completed_conditions = sum(
+            _valid_benchmark_run(run) for item in results for run in item.get("runs", [])
+        )
+        planned_conditions = len(selected_tasks) * repetitions * len(selected_conditions)
+        completed_pairs = sum(
+            {
+                run["condition"]
+                for run in item.get("runs", [])
+                if _valid_benchmark_run(run)
+            }
+            >= set(selected_conditions)
+            for item in results
+        )
+        report = {
+            "task_count": len(selected_tasks),
+            "run_pair_count": len(results),
+            "completed_pair_count": completed_pairs,
+            "repetitions": repetitions,
+            "condition": condition,
+            "model": model,
+            "context_model": context_model,
+            "configuration": configuration,
+            "maximum_authorized_cost_usd": planned_conditions * max_budget_usd,
+            "maximum_additional_authorized_cost_usd": (
+                max(0, planned_conditions - completed_conditions) * max_budget_usd
+            ),
+            "benchmark_complete": completed_conditions == planned_conditions and not stopped_early,
+            "stopped_early": stopped_early,
+            "stop_reason": stop_reason,
+            "results": results,
+            "summary": _summary(results),
+            "warning": (
+                "A passing repository test command is the task-success signal. "
+                "Runs without task-specific tests remain unscored."
+            ),
+        }
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = output_path.with_name(f".{output_path.name}.tmp")
+        temporary.write_text(json.dumps(report, indent=2) + "\n")
+        temporary.replace(output_path)
+        return report
+
+    result_by_key = {
+        (item.get("task_id"), int(item.get("repetition", 1))): item for item in results
+    }
+    for task_index, task in enumerate(selected_tasks):
         for repetition in range(repetitions):
             ordered_conditions = list(selected_conditions)
             if len(ordered_conditions) == 2 and (task_index + repetition) % 2:
                 ordered_conditions.reverse()
-            task_results = []
-            for selected in ordered_conditions:
-                run = _run_condition(
-                    task,
-                    selected,
-                    context_budget,
-                    model,
-                    max_budget_usd,
-                    max_turns,
-                    candidate_reranker,
-                )
-                task_results.append(run)
-                if not run.get("benchmark_valid", True):
-                    stopped_early = True
-                    stop_reason = run.get("provider_failure") or "Claude provider failure."
-                    break
-            results.append(
-                {
+            should_reuse_baseline = (
+                selected_conditions == ["baseline", "adoptrank"]
+                and route_context(task["query"], context_budget).name == "abstain-routine"
+            )
+            if should_reuse_baseline:
+                ordered_conditions = ["baseline", "adoptrank"]
+            key = (task.get("task_id"), repetition + 1)
+            result = result_by_key.get(key)
+            if result is None:
+                result = {
                     "task_id": task.get("task_id"),
                     "query": task["query"],
                     "repetition": repetition + 1,
-                    "runs": task_results,
+                    "runs": [],
                 }
-            )
+                results.append(result)
+                result_by_key[key] = result
+            task_results = result["runs"]
+            completed = {
+                run["condition"] for run in task_results if _valid_benchmark_run(run)
+            }
+            for selected in ordered_conditions:
+                if selected in completed:
+                    continue
+                if selected == "adoptrank" and should_reuse_baseline:
+                    baseline = next(
+                        run
+                        for run in task_results
+                        if run["condition"] == "baseline" and _valid_benchmark_run(run)
+                    )
+                    task_results.append(_reuse_baseline_for_abstention(baseline))
+                    write_checkpoint()
+                    continue
+                try:
+                    run = _run_condition(
+                        task,
+                        selected,
+                        context_budget,
+                        model,
+                        max_budget_usd,
+                        max_turns,
+                        candidate_reranker,
+                    )
+                except Exception as error:
+                    stopped_early = True
+                    stop_reason = f"{type(error).__name__}: {error}"
+                    write_checkpoint()
+                    raise
+                task_results.append(run)
+                write_checkpoint()
+                if not run.get("benchmark_valid", True):
+                    stopped_early = True
+                    stop_reason = run.get("provider_failure") or "Claude provider failure."
+                    write_checkpoint()
+                    break
             if stopped_early:
                 break
         if stopped_early:
             break
-    report = {
-        "task_count": min(max_tasks, len(tasks)),
-        "run_pair_count": len(results),
-        "repetitions": repetitions,
-        "condition": condition,
-        "model": model,
-        "context_model": context_model,
-        "maximum_authorized_cost_usd": len(results) * len(selected_conditions) * max_budget_usd,
-        "stopped_early": stopped_early,
-        "stop_reason": stop_reason,
-        "results": results,
-        "summary": _summary(results),
-        "warning": (
-            "A passing repository test command is the task-success signal. "
-            "Runs without task-specific tests remain unscored."
-        ),
-    }
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(report, indent=2) + "\n")
-    return report
+    return write_checkpoint()

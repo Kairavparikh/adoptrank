@@ -1,9 +1,12 @@
 import json
 import subprocess
 
+import pytest
+
 from adoptrank_backend.claude_benchmark import (
     _parse_stream,
     _provider_failure,
+    run_claude_benchmark,
     _summary,
     _usage,
 )
@@ -130,3 +133,130 @@ def test_legacy_nonzero_exit_pair_is_not_scored() -> None:
     summary = _summary([{"task_id": "legacy", "runs": [base, failed]}])
     assert summary["attempted_paired_tasks"] == 1
     assert summary["paired_tasks"] == 0
+
+
+def test_benchmark_checkpoints_each_condition_and_resumes(tmp_path, monkeypatch) -> None:
+    tasks = tmp_path / "tasks.jsonl"
+    tasks.write_text(
+        "\n".join(
+            json.dumps({"task_id": f"task-{index}", "query": f"task {index}"})
+            for index in range(2)
+        )
+        + "\n"
+    )
+    output = tmp_path / "report.json"
+    calls = []
+
+    def fake_run(task, condition, *args, **kwargs):
+        calls.append((task["task_id"], condition))
+        if len(calls) == 3:
+            raise RuntimeError("transient reranker failure")
+        return {
+            "condition": condition,
+            "benchmark_valid": True,
+            "task_success": True,
+            "total_input_tokens": 100,
+            "repository_tool_output_estimated_tokens": 50,
+            "context_estimated_tokens": 10 if condition == "adoptrank" else 0,
+            "cost_usd": 0.01,
+            "retrieval_file_recall": 1.0 if condition == "adoptrank" else None,
+            "retrieval_abstained": False,
+            "context_latency_ms": 10.0 if condition == "adoptrank" else 0.0,
+        }
+
+    monkeypatch.setattr("adoptrank_backend.claude_benchmark._run_condition", fake_run)
+    with pytest.raises(RuntimeError, match="transient reranker"):
+        run_claude_benchmark(tasks, output, max_tasks=2, max_budget_usd=0.01)
+
+    checkpoint = json.loads(output.read_text())
+    assert checkpoint["completed_pair_count"] == 1
+    assert checkpoint["benchmark_complete"] is False
+    assert checkpoint["stopped_early"] is True
+    assert len(checkpoint["results"][0]["runs"]) == 2
+
+    def resumed_run(task, condition, *args, **kwargs):
+        calls.append((task["task_id"], condition))
+        return fake_run(task, condition, *args, **kwargs)
+
+    monkeypatch.setattr("adoptrank_backend.claude_benchmark._run_condition", resumed_run)
+    report = run_claude_benchmark(
+        tasks, output, max_tasks=2, max_budget_usd=0.01, resume=True
+    )
+    assert report["completed_pair_count"] == 2
+    assert report["benchmark_complete"] is True
+    assert report["stopped_early"] is False
+    assert report["maximum_additional_authorized_cost_usd"] == 0
+    assert calls[:2] == [("task-0", "baseline"), ("task-0", "adoptrank")]
+
+
+def test_resume_discards_invalid_provider_condition(tmp_path, monkeypatch) -> None:
+    tasks = tmp_path / "tasks.jsonl"
+    tasks.write_text(json.dumps({"task_id": "task-0", "query": "fix behavior"}) + "\n")
+    output = tmp_path / "report.json"
+    calls = []
+
+    def run_once(task, condition, *args, **kwargs):
+        calls.append(condition)
+        return {
+            "condition": condition,
+            "benchmark_valid": len(calls) == 1,
+            "provider_failure": None if len(calls) == 1 else "Credit balance is too low",
+            "task_success": True,
+            "total_input_tokens": 100,
+            "repository_tool_output_estimated_tokens": 50,
+            "context_estimated_tokens": 0,
+            "cost_usd": 0.01 if len(calls) == 1 else 0,
+            "retrieval_file_recall": None,
+            "retrieval_abstained": False,
+            "context_latency_ms": 0.0,
+        }
+
+    monkeypatch.setattr("adoptrank_backend.claude_benchmark._run_condition", run_once)
+    partial = run_claude_benchmark(tasks, output, max_budget_usd=0.01)
+    assert partial["benchmark_complete"] is False
+
+    def valid_run(task, condition, *args, **kwargs):
+        calls.append(condition)
+        return run_once(task, condition, *args, **kwargs) | {
+            "benchmark_valid": True,
+            "provider_failure": None,
+        }
+
+    monkeypatch.setattr("adoptrank_backend.claude_benchmark._run_condition", valid_run)
+    resumed = run_claude_benchmark(
+        tasks, output, max_budget_usd=0.01, resume=True
+    )
+    assert resumed["benchmark_complete"] is True
+    assert resumed["completed_pair_count"] == 1
+    assert [run["condition"] for run in resumed["results"][0]["runs"]] == [
+        "baseline",
+        "adoptrank",
+    ]
+
+
+def test_abstention_reuses_baseline_without_second_call(tmp_path, monkeypatch) -> None:
+    tasks = tmp_path / "tasks.jsonl"
+    tasks.write_text(json.dumps({"task_id": "bump", "query": "Bump package from 1 to 2"}) + "\n")
+    output = tmp_path / "report.json"
+    calls = []
+
+    def baseline(task, condition, *args, **kwargs):
+        calls.append(condition)
+        return {
+            "condition": condition,
+            "benchmark_valid": True,
+            "task_success": True,
+            "total_input_tokens": 100,
+            "repository_tool_output_estimated_tokens": 50,
+            "context_estimated_tokens": 0,
+            "cost_usd": 0.01,
+            "retrieval_file_recall": None,
+            "retrieval_abstained": False,
+            "context_latency_ms": 0.0,
+        }
+
+    monkeypatch.setattr("adoptrank_backend.claude_benchmark._run_condition", baseline)
+    report = run_claude_benchmark(tasks, output, max_budget_usd=0.01)
+    assert calls == ["baseline"]
+    assert report["results"][0]["runs"][1]["reused_baseline"] is True
+    assert report["summary"]["retrieval_abstention_rate"] == 1.0
