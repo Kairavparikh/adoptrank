@@ -6,6 +6,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -88,7 +89,51 @@ def build_claude_launch(
     return ClaudeLaunch(command=command, pack=pack, context_text=context_text, audit_path=audit_path)
 
 
-def _audit_payload(launch: ClaudeLaunch, *, status: str, returncode: int | None = None) -> dict:
+def _stream_telemetry(output: str) -> dict[str, object]:
+    """Extract usage and file-navigation metadata without retaining tool output."""
+    tool_uses: dict[str, dict] = {}
+    file_reads: set[str] = set()
+    tool_calls: dict[str, int] = {}
+    result: dict = {}
+    for line in output.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "result":
+            result = event
+        for block in (event.get("message") or {}).get("content") or []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                name = str(block.get("name", ""))
+                tool_uses[str(block.get("id", ""))] = {"name": name, "input": block.get("input") or {}}
+                tool_calls[name] = tool_calls.get(name, 0) + 1
+            elif block.get("type") == "tool_result":
+                tool = tool_uses.get(str(block.get("tool_use_id", "")), {})
+                if tool.get("name") == "Read":
+                    path = (tool.get("input") or {}).get("file_path") or (tool.get("input") or {}).get("path")
+                    if path:
+                        file_reads.add(str(path))
+    usage = result.get("usage") or {}
+    return {
+        "provider_input_tokens": int(usage.get("input_tokens") or 0),
+        "provider_cache_creation_input_tokens": int(usage.get("cache_creation_input_tokens") or 0),
+        "provider_cache_read_input_tokens": int(usage.get("cache_read_input_tokens") or 0),
+        "provider_output_tokens": int(usage.get("output_tokens") or 0),
+        "provider_cost_usd": result.get("total_cost_usd"),
+        "tool_calls": tool_calls,
+        "unique_files_read": sorted(file_reads),
+    }
+
+
+def _audit_payload(
+    launch: ClaudeLaunch,
+    *,
+    status: str,
+    returncode: int | None = None,
+    telemetry: dict[str, object] | None = None,
+) -> dict:
     return {
         "schema_version": "adoptrank.claude-run.v1",
         "created_at": datetime.now(UTC).isoformat(),
@@ -104,12 +149,21 @@ def _audit_payload(launch: ClaudeLaunch, *, status: str, returncode: int | None 
         "external_repositories": [item.full_name for item in launch.pack.external_repositories],
         "warnings": launch.pack.warnings,
         "returncode": returncode,
+        "telemetry": telemetry,
     }
 
 
-def write_audit(launch: ClaudeLaunch, *, status: str, returncode: int | None = None) -> None:
+def write_audit(
+    launch: ClaudeLaunch,
+    *,
+    status: str,
+    returncode: int | None = None,
+    telemetry: dict[str, object] | None = None,
+) -> None:
     launch.audit_path.parent.mkdir(parents=True, exist_ok=True)
-    launch.audit_path.write_text(json.dumps(_audit_payload(launch, status=status, returncode=returncode), indent=2))
+    launch.audit_path.write_text(
+        json.dumps(_audit_payload(launch, status=status, returncode=returncode, telemetry=telemetry), indent=2)
+    )
 
 
 def run_claude_launch(launch: ClaudeLaunch, root: Path, *, dry_run: bool = False) -> int:
@@ -121,6 +175,22 @@ def run_claude_launch(launch: ClaudeLaunch, root: Path, *, dry_run: bool = False
         raise RuntimeError("Claude Code is not installed or is not on PATH. Run `claude auth login` first.")
     write_audit(launch, status="started")
     started = time.perf_counter()
-    completed = subprocess.run(launch.command, cwd=root)
-    write_audit(launch, status=f"completed:{time.perf_counter() - started:.2f}s", returncode=completed.returncode)
+    print_mode = "--print" in launch.command
+    completed = subprocess.run(
+        launch.command,
+        cwd=root,
+        capture_output=print_mode,
+        text=print_mode,
+    )
+    telemetry = None
+    if print_mode:
+        sys.stdout.write(completed.stdout)
+        sys.stderr.write(completed.stderr)
+        telemetry = _stream_telemetry(completed.stdout)
+    write_audit(
+        launch,
+        status=f"completed:{time.perf_counter() - started:.2f}s",
+        returncode=completed.returncode,
+        telemetry=telemetry,
+    )
     return completed.returncode

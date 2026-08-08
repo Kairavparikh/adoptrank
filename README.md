@@ -172,7 +172,9 @@ adoptrank claude "Add idempotent payment retries" --path . --budget 8000 \
 
 Each launch records only metadata in `.adoptrank/claude-runs/`: the context
 hash, token estimate, selected paths, external repository names, route, and
-exit code. It does not write source excerpts or secrets to the audit file.
+exit code. `--print` additionally records provider usage and later file-read
+paths/tool-call counts, never tool output. It does not write source excerpts
+or secrets to the audit file.
 
 The public deployment at <https://adoptrank.vercel.app> is connected to the
 checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also
