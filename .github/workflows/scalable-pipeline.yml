@@ -1,0 +1,47 @@
+name: Scalable pipeline checks
+
+on:
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "rust/**"
+      - "spark/**"
+      - "backend/src/adoptrank_backend/events.py"
+      - "backend/src/adoptrank_backend/parity.py"
+      - "backend/tests/test_events.py"
+      - ".github/workflows/scalable-pipeline.yml"
+  push:
+    branches: [main, agent/context-engine-v0-2]
+    paths:
+      - "contracts/**"
+      - "rust/**"
+      - "spark/**"
+      - "backend/src/adoptrank_backend/events.py"
+      - "backend/src/adoptrank_backend/parity.py"
+      - "backend/tests/test_events.py"
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest tests/test_events.py -q
+      - run: python -m compileall -q ../spark
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --check
+      - run: cargo check --all-targets

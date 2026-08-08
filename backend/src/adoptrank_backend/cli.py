@@ -128,6 +128,14 @@ def main() -> None:
     persist = commands.add_parser("persist")
     persist.add_argument("--snapshots", type=Path, required=True)
 
+    export_events = commands.add_parser("export-events")
+    export_events.add_argument("--snapshots", type=Path, required=True)
+    export_events.add_argument("--output", type=Path, required=True)
+
+    parity = commands.add_parser("validate-event-parity")
+    parity.add_argument("--python-events", type=Path, required=True)
+    parity.add_argument("--candidate-events", type=Path, required=True)
+
     leaderboard = commands.add_parser("leaderboard")
     leaderboard.add_argument("--owner", "--username", dest="owner")
     leaderboard.add_argument("--language")
@@ -175,6 +183,23 @@ def main() -> None:
         pairs = build_pairs(load_snapshots(args.snapshots))
         write_pairs(pairs, args.output)
         print(f"pairs={len(pairs)} output={args.output}")
+    elif args.command == "export-events":
+        from .dataset import load_snapshots
+        from .events import snapshot_event, write_events
+
+        events = [snapshot_event(snapshot) for snapshot in load_snapshots([args.snapshots])]
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        write_events(events, str(args.output))
+        print(f"events={len(events)} output={args.output}")
+    elif args.command == "validate-event-parity":
+        import json
+
+        from .parity import compare_events, load_events
+
+        report = compare_events(load_events(args.python_events), load_events(args.candidate_events))
+        print(json.dumps(report.to_dict(), indent=2))
+        if not report.passed:
+            raise SystemExit(1)
     elif args.command == "analyze-code":
         from .code_analysis import enrich_snapshot_file
 

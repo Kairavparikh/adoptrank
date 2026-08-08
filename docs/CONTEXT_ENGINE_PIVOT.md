@@ -103,6 +103,12 @@ idempotency key, and provenance. Payloads use JSON/Protobuf on queues and Parque
 storage. Python and Rust implementations run in shadow mode until counts, content hashes, extracted
 symbols, and failure rates agree.
 
+**Implemented initial vertical slice (August 2026):** `contracts/repository_event.schema.json` defines
+`repository-event.v1`; Python can export deterministic snapshot events and compare candidate event IDs
+and payload hashes; `rust/adoptrank-ingest` emits the same replayable envelope from GitHub search; and
+the Spark jobs consume that envelope for event-time feature materialization and future-only adoption
+backtests. The Python collector remains production owner—this is intentionally not a cutover claim.
+
 Rust activation gates:
 
 - Python workers cannot satisfy the repository-refresh service-level objective at the allowed cost;

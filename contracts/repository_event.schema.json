@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://adoptrank.dev/contracts/repository-event/v1",
+  "title": "AdoptRank repository event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_type", "event_id", "observed_at", "repository", "payload", "provenance"],
+  "properties": {
+    "schema_version": {"const": "adoptrank.repository-event.v1"},
+    "event_type": {"enum": ["RepositoryDiscovered", "RepositorySnapshotCaptured", "CommitObserved", "FileDiffExtracted", "SymbolChanged", "CodeChunkIndexed", "IndexInvalidated"]},
+    "event_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_name", "html_url"],
+      "properties": {
+        "full_name": {"type": "string", "pattern": "^[^/]+/[^/]+$"},
+        "html_url": {"type": "string", "format": "uri"},
+        "commit_sha": {"type": ["string", "null"]}
+      }
+    },
+    "payload": {"type": "object"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "producer"],
+      "properties": {
+        "source": {"type": "string"},
+        "producer": {"type": "string"},
+        "query": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
