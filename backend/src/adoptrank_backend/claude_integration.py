@@ -117,6 +117,7 @@ def _stream_telemetry(output: str) -> dict[str, object]:
                         file_reads.add(str(path))
     usage = result.get("usage") or {}
     return {
+        "provider_is_error": bool(result.get("is_error")),
         "provider_input_tokens": int(usage.get("input_tokens") or 0),
         "provider_cache_creation_input_tokens": int(usage.get("cache_creation_input_tokens") or 0),
         "provider_cache_read_input_tokens": int(usage.get("cache_read_input_tokens") or 0),
@@ -187,10 +188,11 @@ def run_claude_launch(launch: ClaudeLaunch, root: Path, *, dry_run: bool = False
         sys.stdout.write(completed.stdout)
         sys.stderr.write(completed.stderr)
         telemetry = _stream_telemetry(completed.stdout)
+    effective_returncode = 1 if telemetry and telemetry["provider_is_error"] else completed.returncode
     write_audit(
         launch,
-        status=f"completed:{time.perf_counter() - started:.2f}s",
-        returncode=completed.returncode,
+        status=("failed" if effective_returncode else "completed") + f":{time.perf_counter() - started:.2f}s",
+        returncode=effective_returncode,
         telemetry=telemetry,
     )
-    return completed.returncode
+    return effective_returncode

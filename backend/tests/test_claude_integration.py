@@ -40,3 +40,8 @@ def test_stream_telemetry_keeps_metadata_not_tool_output() -> None:
     assert telemetry["provider_input_tokens"] == 100
     assert telemetry["unique_files_read"] == ["src/payments.py"]
     assert "private source code" not in json.dumps(telemetry)
+
+
+def test_stream_telemetry_marks_provider_errors() -> None:
+    telemetry = _stream_telemetry('{"type":"result","is_error":true,"usage":{}}')
+    assert telemetry["provider_is_error"] is True
