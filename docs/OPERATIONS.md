@@ -43,9 +43,10 @@ The ranking endpoint is public at the network layer but `/v1/search` requires th
 private `x-adoptrank-key` shared only by Modal and Vercel. `/health` intentionally
 contains no secret or repository data and remains available for health checks.
 
-The collector schedule is `17 * * * *` UTC. Each run searches both established
-and recently updated repositories, deduplicates them, writes immutable observations,
-and materializes the leaderboard. Hourly observations are retained for 30 days,
+The collector schedule is `17 * * * *` UTC. Each run rotates through eight queries from the
+balanced systems, data, ML, finance, security, and developer-tool catalog, searches both established
+and recently updated repositories, deduplicates them, writes immutable observations, and materializes
+the leaderboard. Hourly observations are retained for 30 days,
 compacted to one daily observation from days 30–90, and removed after 90 days.
 The initial hosted run persisted 246 repositories. On 2026-08-07, a rate-limited
 shallow backfill plus the hourly collector grew production to 4,967 repositories

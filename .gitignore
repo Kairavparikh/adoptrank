@@ -42,6 +42,8 @@ next-env.d.ts
 /work/
 /report.csv
 /backend/.venv/
+/.venv-spark/
+/rust/target/
 /backend/build/
 /backend/dist/
 /backend/data/

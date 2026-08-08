@@ -141,12 +141,26 @@ def collect_live_repositories() -> dict[str, int | str]:
 
     captured_at = datetime.now(UTC)
     output = Path("/tmp") / f"adoptrank-{captured_at:%Y%m%dT%H%M%SZ}.jsonl"
-    count = asyncio.run(collect_queries(Path("/app/seed_queries.txt"), output, per_query=50))
+    # Rotate a bounded slice of the diverse catalog every hour. This expands
+    # coverage while keeping hydrated GitHub calls well under a token's hourly
+    # rate budget; both star-ranked and recently-updated results are collected.
+    queries_per_run = 8
+    hourly_slot = int(captured_at.timestamp() // 3600)
+    count = asyncio.run(
+        collect_queries(
+            Path("/app/seed_queries.txt"),
+            output,
+            per_query=50,
+            query_limit=queries_per_run,
+            query_offset=hourly_slot * queries_per_run,
+        )
+    )
     if not settings.database_url:
         raise RuntimeError("DATABASE_URL is required")
     leaderboard = asyncio.run(materialize_leaderboard(settings.database_url))
     return {
         "repositories": count,
+        "queries_per_run": queries_per_run,
         "captured_at": captured_at.isoformat(),
         "leaderboard_snapshot": str(leaderboard["snapshot_id"]),
     }

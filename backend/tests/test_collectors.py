@@ -1,6 +1,7 @@
 import asyncio
 
 from adoptrank_backend.collectors import GitHubCollector
+from adoptrank_backend.collectors import collect_queries
 
 
 def _item(index: int) -> dict:
@@ -42,3 +43,25 @@ def test_shallow_search_paginates_without_hydration(monkeypatch) -> None:
     assert len(snapshots) == 250
     assert pages == [1, 2, 3]
     assert snapshots[-1].full_name == "example/repo-249"
+
+
+def test_collection_rotates_a_bounded_query_window(tmp_path, monkeypatch) -> None:
+    query_file = tmp_path / "queries.txt"
+    query_file.write_text("one\ntwo\nthree\nfour\n")
+    seen: list[str] = []
+
+    async def fake_search(self, query: str, **kwargs):
+        seen.append(query)
+        return []
+
+    monkeypatch.setattr(GitHubCollector, "search", fake_search)
+    asyncio.run(
+        collect_queries(
+            query_file,
+            tmp_path / "events.jsonl",
+            query_limit=2,
+            query_offset=3,
+            hydrate_signals=False,
+        )
+    )
+    assert seen == ["four", "four", "one", "one"]

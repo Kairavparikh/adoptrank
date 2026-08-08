@@ -179,12 +179,23 @@ async def collect_queries(
     *,
     hydrate_signals: bool = True,
     page_delay_seconds: float = 0.0,
+    query_limit: int | None = None,
+    query_offset: int = 0,
 ) -> int:
-    queries = [
+    all_queries = [
         line.strip()
         for line in query_file.read_text().splitlines()
         if line.strip() and not line.startswith("#")
     ]
+    if query_limit is not None and query_limit < 1:
+        raise ValueError("query_limit must be positive when provided")
+    if not all_queries:
+        return 0
+    if query_limit is None or query_limit >= len(all_queries):
+        queries = all_queries
+    else:
+        start = query_offset % len(all_queries)
+        queries = [all_queries[(start + index) % len(all_queries)] for index in range(query_limit)]
     collector = GitHubCollector(settings.github_token)
     unique: dict[str, RepositorySnapshot] = {}
     try:
