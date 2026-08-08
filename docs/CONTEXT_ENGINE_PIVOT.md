@@ -109,6 +109,13 @@ and payload hashes; `rust/adoptrank-ingest` emits the same replayable envelope f
 the Spark jobs consume that envelope for event-time feature materialization and future-only adoption
 backtests. The Python collector remains production owner—this is intentionally not a cutover claim.
 
+**Claude Code launch integration:** `adoptrank claude "<task>" --path <project>` builds a token-bounded
+local/external evidence pack and launches Claude Code with `--append-system-prompt`. Dry-run mode exposes
+the redacted command and exact estimated injection size without invoking Claude. The audit record stores
+only metadata (hash, selected paths, budget, route, external repository names, and exit status), never
+source excerpts or secrets. This caps injected context, but does not claim to cap later Claude tool reads;
+the latter remains the condition for any guaranteed total-token statement.
+
 Rust activation gates:
 
 - Python workers cannot satisfy the repository-refresh service-level objective at the allowed cost;

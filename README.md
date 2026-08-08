@@ -150,6 +150,30 @@ frameworks, and symbols. It skips ignored paths, dependency/build directories,
 known credential files, and files matching secret patterns. Use
 `adoptrank find "..." --dry-run` to inspect the exact payload before sending it.
 
+## Claude Code context mode
+
+`adoptrank claude` starts Claude Code with a bounded, inspectable context pack.
+It is designed to reduce repeated orientation work, not to promise lower total
+provider usage: Claude can still read additional files after launch.
+
+```bash
+# Inspect the exact launch without contacting Claude or the ranking API.
+adoptrank claude "Add idempotent payment retries" --path . \
+  --budget 8000 --no-external --dry-run
+
+# Interactive Claude Code with local context plus optional public code evidence.
+adoptrank claude "Add idempotent payment retries" --path . --budget 8000
+
+# A bounded non-interactive run. Claude Code enforces this dollar cap only in
+# print mode; it is not a replacement for the context-token budget.
+adoptrank claude "Add idempotent payment retries" --path . --budget 8000 \
+  --print --max-budget-usd 0.25
+```
+
+Each launch records only metadata in `.adoptrank/claude-runs/`: the context
+hash, token estimate, selected paths, external repository names, route, and
+exit code. It does not write source excerpts or secrets to the audit file.
+
 The public deployment at <https://adoptrank.vercel.app> is connected to the
 checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also
 collects GitHub/PyPI data, writes point-in-time PostgreSQL observations, and

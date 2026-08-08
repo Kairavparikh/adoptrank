@@ -1,8 +1,11 @@
 import argparse
 import asyncio
+import json
 import os
 import shutil
 from pathlib import Path
+
+from .context_pack import estimate_tokens
 
 
 def main() -> None:
@@ -58,6 +61,18 @@ def main() -> None:
     context.add_argument("--api", default="https://adoptrank.vercel.app")
     context.add_argument("--no-external", action="store_true")
     context.add_argument("--json", action="store_true")
+
+    claude = commands.add_parser("claude", help="Launch Claude Code with a bounded AdoptRank context pack")
+    claude.add_argument("query")
+    claude.add_argument("--path", type=Path, default=Path.cwd())
+    claude.add_argument("--budget", type=int, default=8000)
+    claude.add_argument("--api", default="https://adoptrank.vercel.app")
+    claude.add_argument("--no-external", action="store_true")
+    claude.add_argument("--print", dest="print_mode", action="store_true")
+    claude.add_argument("--permission-mode", default="default")
+    claude.add_argument("--max-budget-usd", type=float)
+    claude.add_argument("--audit-file", type=Path)
+    claude.add_argument("--dry-run", action="store_true")
 
     benchmark_context = commands.add_parser("benchmark-context")
     benchmark_context.add_argument("--tasks", type=Path, required=True)
@@ -192,8 +207,6 @@ def main() -> None:
         write_events(events, str(args.output))
         print(f"events={len(events)} output={args.output}")
     elif args.command == "validate-event-parity":
-        import json
-
         from .parity import compare_events, load_events
 
         report = compare_events(load_events(args.python_events), load_events(args.candidate_events))
@@ -224,8 +237,6 @@ def main() -> None:
 
         print(scan_project(args.path).model_dump_json(indent=2))
     elif args.command == "find":
-        import json
-
         import httpx
 
         from .local_scan import scan_project
@@ -292,6 +303,36 @@ def main() -> None:
         if external_error:
             pack.warnings.append(external_error)
         print(pack.model_dump_json(indent=2) if args.json else render_context_pack(pack))
+    elif args.command == "claude":
+        from .claude_integration import build_claude_launch, run_claude_launch
+
+        launch = build_claude_launch(
+            args.query,
+            args.path,
+            args.budget,
+            api=args.api,
+            include_external=not args.no_external,
+            print_mode=args.print_mode,
+            permission_mode=args.permission_mode,
+            max_budget_usd=args.max_budget_usd,
+            audit_path=args.audit_file,
+        )
+        if args.dry_run:
+            print(
+                json.dumps(
+                    {
+                        "command": [part if part != launch.context_text else "<bounded-context-pack>" for part in launch.command],
+                        "context_estimated_tokens": estimate_tokens(launch.context_text),
+                        "context_budget": launch.pack.budget,
+                        "audit_file": str(launch.audit_path),
+                        "route": launch.pack.route,
+                    },
+                    indent=2,
+                )
+            )
+        exit_code = run_claude_launch(launch, args.path, dry_run=args.dry_run)
+        if exit_code:
+            raise SystemExit(exit_code)
     elif args.command == "benchmark-context":
         from .context_benchmark import run_context_benchmark
 
