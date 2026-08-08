@@ -53,6 +53,20 @@ Use `--json` for integrations and `--no-external` for a fully local retrieval
 run. Token counts are portable estimates until provider-reported telemetry is
 integrated; the project does not yet claim measured Claude token savings.
 
+## Claude Code launcher
+
+```bash
+# Inspect the bounded context without invoking Claude.
+adoptrank claude "Add idempotent payment retries" --path . --budget 8000 --dry-run
+
+# Start Claude Code with the context pack.
+adoptrank claude "Add idempotent payment retries" --path . --budget 8000
+```
+
+The launcher writes only redacted metadata—context hash, selected paths, budget,
+and exit status—to `.adoptrank/claude-runs/`. `--print` also records provider
+usage and later file-read paths/tool-call counts, never source or tool output.
+
 Web application: <https://adoptrank.vercel.app>
 
 Source and documentation: <https://github.com/Kairavparikh/adoptrank>
