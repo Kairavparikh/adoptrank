@@ -356,6 +356,8 @@ abstains instead of paying for a statistically noisy identical prompt.
 
 ### Stage 2.5 — Scalable corpus pipeline
 
+- Current status: Rust and Spark are planned but not implemented. There is currently no `Cargo.toml`,
+  `.rs` source, PySpark job, Spark streaming application, or Spark configuration in the repository.
 - Implement Rust GitHub polling, cloning, diff, parsing-coordination, and queue workers behind versioned
   event contracts.
 - Introduce Redpanda/Kafka and immutable Parquet/Delta storage for replayable source events.

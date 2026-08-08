@@ -229,6 +229,16 @@ The response includes a model version, data watermark, and ranked results with d
 - Context-aware search API.
 - VS Code extension using the same contracts.
 
+### M4 — Scalable systems implementation
+
+- Add Rust workers for high-throughput GitHub polling, repository cloning, diff processing, Tree-sitter
+  coordination, and queue consumption. This milestone begins with a `Cargo.toml` workspace; no Rust
+  implementation currently exists.
+- Add Spark Structured Streaming and batch jobs for historical commit timelines, training examples,
+  feature generation, and adoption backtests. No PySpark or Spark configuration currently exists.
+- Run Rust/Spark in shadow mode against the Python reference and require matching counts, checksums,
+  feature values, and failure rates before shifting production traffic.
+
 ### M4 — Robust adoption prediction
 
 - Repeated real observations and point-in-time feature store.
