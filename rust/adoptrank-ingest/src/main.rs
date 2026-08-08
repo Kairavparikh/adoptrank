@@ -9,12 +9,20 @@ use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::{env, fs::File, io::{BufWriter, Write}, path::PathBuf};
+use std::{
+    env,
+    fs::File,
+    io::{BufWriter, Write},
+    path::PathBuf,
+};
 
 const EVENT_SCHEMA_VERSION: &str = "adoptrank.repository-event.v1";
 
 #[derive(Parser, Debug)]
-#[command(name = "adoptrank-ingest", about = "Emit replayable GitHub repository events")]
+#[command(
+    name = "adoptrank-ingest",
+    about = "Emit replayable GitHub repository events"
+)]
 struct Args {
     /// GitHub repository search expression.
     #[arg(long)]
@@ -79,8 +87,12 @@ fn pydantic_datetime(value: DateTime<Utc>) -> String {
 }
 
 fn snapshot(item: &Value, captured_at: DateTime<Utc>, query: &str) -> Result<Value> {
-    let full_name = item["full_name"].as_str().context("GitHub result missing full_name")?;
-    let html_url = item["html_url"].as_str().context("GitHub result missing html_url")?;
+    let full_name = item["full_name"]
+        .as_str()
+        .context("GitHub result missing full_name")?;
+    let html_url = item["html_url"]
+        .as_str()
+        .context("GitHub result missing html_url")?;
     let license = item["license"]["spdx_id"].as_str().unwrap_or("NOASSERTION");
     Ok(json!({
         "full_name": full_name,
@@ -132,32 +144,60 @@ async fn main() -> Result<()> {
     if let Ok(token) = env::var("GITHUB_TOKEN") {
         headers.insert(AUTHORIZATION, format!("Bearer {token}").parse()?);
     }
-    let client = reqwest::Client::builder().default_headers(headers).build()?;
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()?;
     let response: Value = client
         .get("https://api.github.com/search/repositories")
-        .query(&[("q", &args.query), ("sort", &args.sort), ("order", &"desc".to_string()), ("per_page", &args.limit.to_string())])
-        .send().await?.error_for_status()?.json().await?;
-    let items = response["items"].as_array().context("GitHub search missing items")?;
+        .query(&[
+            ("q", &args.query),
+            ("sort", &args.sort),
+            ("order", &"desc".to_string()),
+            ("per_page", &args.limit.to_string()),
+        ])
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let items = response["items"]
+        .as_array()
+        .context("GitHub search missing items")?;
     let requested_at = args.observed_at.unwrap_or_else(Utc::now);
     // Python's datetime has microsecond precision, so normalize the Rust clock
     // before it becomes an event id or a payload field.
     let observed_at = requested_at
         .with_nanosecond(requested_at.timestamp_subsec_micros() * 1_000)
         .expect("valid microsecond timestamp");
-    let file = File::create(&args.output).with_context(|| format!("creating {}", args.output.display()))?;
+    let file = File::create(&args.output)
+        .with_context(|| format!("creating {}", args.output.display()))?;
     let mut writer = BufWriter::new(file);
     for item in items {
         let payload = snapshot(item, observed_at, &args.query)?;
-        let full_name = payload["full_name"].as_str().expect("snapshot full_name");
-        let html_url = payload["html_url"].as_str().expect("snapshot html_url");
+        let full_name = payload["full_name"]
+            .as_str()
+            .expect("snapshot full_name")
+            .to_owned();
+        let html_url = payload["html_url"]
+            .as_str()
+            .expect("snapshot html_url")
+            .to_owned();
         let event = Event {
             schema_version: EVENT_SCHEMA_VERSION,
             event_type: "RepositorySnapshotCaptured",
-            event_id: event_id(observed_at, full_name, &payload),
+            event_id: event_id(observed_at, &full_name, &payload),
             observed_at,
-            repository: RepositoryIdentity { full_name, html_url, commit_sha: None },
+            repository: RepositoryIdentity {
+                full_name: &full_name,
+                html_url: &html_url,
+                commit_sha: None,
+            },
             payload,
-            provenance: Provenance { source: "github", producer: "rust-shadow-collector", query: &args.query },
+            provenance: Provenance {
+                source: "github",
+                producer: "rust-shadow-collector",
+                query: &args.query,
+            },
         };
         writeln!(writer, "{}", serde_json::to_string(&event)?)?;
     }
