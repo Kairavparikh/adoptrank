@@ -1,0 +1,29 @@
+{
+  "status": "preliminary",
+  "task_count": 1,
+  "task": "Download Qwen models before enabling offline serving",
+  "model": "sonnet",
+  "baseline": {
+    "task_success": true,
+    "processed_input_tokens": 73005,
+    "output_tokens": 1494,
+    "estimated_cost_usd": 0.0983778
+  },
+  "adoptrank": {
+    "task_success": true,
+    "processed_input_tokens": 59827,
+    "output_tokens": 1575,
+    "estimated_cost_usd": 0.08896095,
+    "estimated_context_tokens": 2247
+  },
+  "comparison": {
+    "processed_input_token_reduction": 0.1805081844,
+    "estimated_cost_reduction": 0.0957212908
+  },
+  "decision": "The result is below the 30% token-reduction gate and is only one task; the pivot is not approved.",
+  "limitations": [
+    "One small task cannot establish a reliable effect.",
+    "Processed input includes cached/system context and is not isolated repository-read usage.",
+    "The Claude and AdoptRank solutions differed syntactically but both passed the behavioral evaluator."
+  ]
+}

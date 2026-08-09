@@ -43,16 +43,39 @@ The ranking endpoint is public at the network layer but `/v1/search` requires th
 private `x-adoptrank-key` shared only by Modal and Vercel. `/health` intentionally
 contains no secret or repository data and remains available for health checks.
 
-The collector schedule is `17 * * * *` UTC. Each run searches both established
-and recently updated repositories, deduplicates them, writes immutable observations,
-and materializes the leaderboard. Hourly observations are retained for 30 days,
+The collector schedule is `17 * * * *` UTC. Each run rotates through eight queries from the
+balanced systems, data, ML, finance, security, and developer-tool catalog, searches both established
+and recently updated repositories, deduplicates them, writes immutable observations, and materializes
+the leaderboard. Hourly observations are retained for 30 days,
 compacted to one daily observation from days 30–90, and removed after 90 days.
-The initial hosted run persisted 246 repositories. The widened hourly verification
-on 2026-08-07 grew production to 901 repositories and 1,223 observations, created
-two leaderboard snapshots with 1,147 total ranking rows, and advanced the watermark
-to `2026-08-07T05:28:34Z`. Of the first 100 current results, 25 had measurable
-rank movement and 74 entered the expanded catalog. The production pgvector table
-contains 241 Qwen code chunks from the commit-pinned bootstrap corpus.
+The initial hosted run persisted 246 repositories. On 2026-08-07, a rate-limited
+shallow backfill plus the hourly collector grew production to 4,967 repositories
+and 18,812 immutable observations. The backfill paginates GitHub search while
+skipping release, contributor, and PyPI fan-out, then performs batched PostgreSQL
+upserts; it does not clone repositories or use a GPU.
+
+`deep_index_production_repositories` runs at minute 47 every six hours. It selects
+25 changed, language-diverse repositories, pins their current commits, extracts
+Tree-sitter code/test chunks, and writes Qwen embeddings to pgvector. The first
+verified incremental batch increased production from seven to 32 deeply indexed
+repositories and from 241 to 752 code chunks. Its measured Modal usage, including
+verification deploys, was under $0.02. Check current non-secret counts with:
+
+```bash
+backend/.venv/bin/python -c 'import modal; print(modal.Function.from_name("adoptrank-ranker", "production_corpus_status_v2").remote())'
+```
+
+Run a deliberate shallow catalog expansion with:
+
+```bash
+backend/.venv/bin/modal run deploy/modal_app.py::backfill_repository_catalog --per-query 500
+```
+
+The context model is trained on the L4 with `train_context_production`; checkpoints
+are persisted in the `adoptrank-models` Modal Volume with dataset fingerprints and
+explicit validation group IDs. `context-ranker.pt` is the task-group split model;
+`context-ranker-holdout.pt` is the repository-holdout audit artifact. The latter is
+an evaluation artifact and must not replace the full-data production checkpoint.
 
 ### Alternative: Hugging Face Docker Space
 

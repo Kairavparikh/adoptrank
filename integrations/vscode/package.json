@@ -2,7 +2,7 @@
   "name": "adoptrank-vscode",
   "displayName": "AdoptRank",
   "description": "Find open-source repositories ranked for the current workspace.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "kairavparikh",
   "license": "MIT",
   "homepage": "https://adoptrank.vercel.app",

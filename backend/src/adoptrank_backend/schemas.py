@@ -90,3 +90,66 @@ class SearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=500)
     limit: int = Field(default=10, ge=1, le=25)
     project_context: ProjectContext | None = None
+
+
+class ContextSnippet(BaseModel):
+    source: str
+    path: str
+    content: str
+    score: float
+    estimated_tokens: int
+    repository: str | None = None
+    url: str | None = None
+    start_line: int | None = None
+
+
+class ExternalRepositoryEvidence(BaseModel):
+    full_name: str
+    url: str
+    reason: str
+    score: float
+    code_evidence: list[str] = Field(default_factory=list)
+    estimated_tokens: int
+
+
+class ContextPack(BaseModel):
+    query: str
+    project: ProjectContext
+    budget: int
+    estimated_tokens: int
+    snippets: list[ContextSnippet] = Field(default_factory=list)
+    related_paths: list[str] = Field(default_factory=list)
+    external_repositories: list[ExternalRepositoryEvidence] = Field(default_factory=list)
+    excluded_candidates: int = 0
+    route: str = "standard"
+    abstained: bool = False
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ContextEvidenceRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=500)
+    token_budget: int = Field(default=2000, ge=200, le=20_000)
+    limit: int = Field(default=5, ge=1, le=10)
+    project_context: ProjectContext | None = None
+
+
+class ExternalCodeExcerpt(BaseModel):
+    repository: str
+    repository_url: str
+    commit_sha: str
+    license: str
+    path: str
+    source_url: str
+    content: str
+    score: float
+    estimated_tokens: int
+
+
+class ContextEvidenceResponse(BaseModel):
+    query: str
+    evidence: list[ExternalCodeExcerpt] = Field(default_factory=list)
+    estimated_tokens: int
+    token_budget: int
+    model_version: str
+    data_watermark: datetime | None
+    warnings: list[str] = Field(default_factory=list)

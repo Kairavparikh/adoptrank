@@ -7,6 +7,7 @@ The maintained product specification is in [docs/PRD.md](docs/PRD.md).
 ## Current vertical slice
 
 - Natural-language repository search
+- Project-aware feature-reference search for public GitHub repositories
 - Live overall and per-owner leaderboards with adoption windows and rank movement
 - Evidence panel with code paths and adoption signals
 - Emerging, Durable, and Hidden Gem discovery views
@@ -15,6 +16,7 @@ The maintained product specification is in [docs/PRD.md](docs/PRD.md).
 - PostgreSQL + pgvector search API with a resilient preview fallback
 - Vercel-ready Next.js application
 - FastAPI model service with live GitHub/PyPI ingestion
+- Incremental commit-pinned code indexing from Neon into Qwen/pgvector every six hours
 - Qwen3 embeddings and cross-encoder reranking with PyTorch InfoNCE, pairwise ranking, and multi-objective heads
 
 ## Local development
@@ -55,19 +57,20 @@ pipx install adoptrank
 The GitHub source-install fallback is
 `pipx install "git+https://github.com/Kairavparikh/adoptrank.git#subdirectory=backend"`.
 
-Then run contextual search from any project or inspect the live leaderboard:
+Then search from any project or inspect the live leaderboard:
 
 ```bash
 cd your-project
 adoptrank find "a streaming anomaly detector that fits this codebase"
+adoptrank find "add Stripe webhook retries" --path .
 adoptrank leaderboard --language Python --sort momentum
 adoptrank leaderboard --owner openai --window 7
 ```
 
-The scanner sends only bounded structured context—languages, dependencies,
-frameworks, and symbols. It skips ignored paths, dependency/build directories,
-known credential files, and files matching secret patterns. Use
-`adoptrank find "..." --dry-run` to inspect the exact payload before sending it.
+The local scanner reads languages, dependencies, frameworks, and symbols to
+improve project compatibility. It skips ignored paths, dependency/build
+directories, known credential files, and files matching secret patterns. Use
+`adoptrank find "..." --dry-run` to inspect the exact search payload.
 
 The public deployment at <https://adoptrank.vercel.app> is connected to the
 checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also

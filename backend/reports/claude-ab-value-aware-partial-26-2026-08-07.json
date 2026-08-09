@@ -1,0 +1,42 @@
+{
+  "status": "inconclusive_partial",
+  "benchmark_complete": false,
+  "valid_paired_tasks": 26,
+  "required_paired_tasks": 30,
+  "stop_reason": "Credit balance is too low",
+  "model": "sonnet",
+  "context_model": "qwen3-context-ranknet:context-ranker.pt",
+  "maximum_additional_authorized_cost_usd": 1.2,
+  "actual_valid_pair_cost_usd": 6.76392465,
+  "baseline": {
+    "processed_input_tokens": 2519778,
+    "repository_tool_output_estimated_tokens": 119143,
+    "strict_task_success": 0.0769230769,
+    "hidden_contract_completion": 0.2893192519
+  },
+  "adoptrank": {
+    "processed_input_tokens": 2035645,
+    "repository_tool_output_estimated_tokens": 121215,
+    "injected_context_estimated_tokens": 9352,
+    "strict_task_success": 0.0769230769,
+    "hidden_contract_completion": 0.3109098408
+  },
+  "effects": {
+    "processed_input_token_reduction": 0.1921331959,
+    "estimated_cost_reduction": 0.0951303326,
+    "repository_context_token_reduction": -0.0958847771,
+    "repository_context_token_reduction_ci95": [
+      -0.6860229918,
+      0.2970787419
+    ],
+    "hidden_contract_completion_delta": 0.0215905889
+  },
+  "decision": {
+    "pivot_approved": false,
+    "reason": "Only 26 of 30 required pairs completed; repository context increased and its confidence interval crossed zero."
+  },
+  "notes": [
+    "The raw checkpoint remains local because it contains generated patches and full Claude outputs.",
+    "Resume filters the final zero-cost provider failure, so eight valid conditions remain with a $1.20 hard maximum."
+  ]
+}

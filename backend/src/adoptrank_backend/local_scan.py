@@ -12,7 +12,11 @@ from .schemas import ProjectContext
 
 DENIED_NAMES = {".env", ".npmrc", ".pypirc", "credentials", "credentials.json", "id_rsa", "id_ed25519"}
 DENIED_PARTS = {".git", ".venv", "venv", "node_modules", "dist", "build", "target", ".next", "vendor"}
-SECRET_PATTERN = re.compile(r"(?:api[_-]?key|secret|password|token|private[_-]?key)\s*[:=]", re.I)
+SECRET_PATTERN = re.compile(
+    r"(?:api[_-]?key|secret|password|token|private[_-]?key)\s*[:=]\s*"
+    r"(?:['\"][^'\"\n]{8,}['\"]|(?:ghp_|github_pat_|sk-|xox[baprs]-)[A-Za-z0-9_-]{8,})",
+    re.I,
+)
 MANIFESTS = {"pyproject.toml", "package.json", "requirements.txt", "cargo.toml", "go.mod"}
 
 

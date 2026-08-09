@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import Leaderboard from "./components/Leaderboard";
+import ProjectReferences from "./components/ProjectReferences";
 
 type Repo = {
   id: string;
@@ -175,7 +176,7 @@ function MiniChart({ values }: { values: number[] }) {
 export default function Home() {
   const [query, setQuery] = useState("Bitcoin anomaly detection in Python");
   const [activeQuery, setActiveQuery] = useState("Bitcoin anomaly detection in Python");
-  const [view, setView] = useState<"leaderboard" | "search" | "method" | "compare">("leaderboard");
+  const [view, setView] = useState<"leaderboard" | "search" | "project" | "method" | "compare">("leaderboard");
   const [selected, setSelected] = useState<string>(repositories[0].id);
   const [compared, setCompared] = useState<string[]>([]);
   const [serverOrder, setServerOrder] = useState<string[]>([]);
@@ -294,12 +295,14 @@ export default function Home() {
         <div className="nav-tabs">
           <button className={view === "leaderboard" ? "active" : ""} onClick={() => setView("leaderboard")}>Leaderboard</button>
           <button className={view === "search" ? "active" : ""} onClick={() => setView("search")}>Search</button>
+          <button className={view === "project" ? "active" : ""} onClick={() => setView("project")}>For my project</button>
           <button className={view === "method" ? "active" : ""} onClick={() => setView("method")}>How it works</button>
         </div>
         <a className="cli-pill" href="#terminal"><span className="status-dot" /> CLI preview</a>
       </nav>
 
       {view === "leaderboard" && <Leaderboard />}
+      {view === "project" && <ProjectReferences />}
 
       {view === "search" && (
         <>
@@ -405,8 +408,8 @@ export default function Home() {
           <section className="terminal-section" id="terminal">
             <div className="terminal-copy">
               <span className="section-kicker light">Built for where you work</span>
-              <h2>One search.<br />Your project’s context.</h2>
-              <p>The CLI reads dependency files and runtime metadata locally, then reranks results for the codebase in front of you. Your source stays on your machine.</p>
+              <h2>One search.<br />Evidence for your stack.</h2>
+              <p>The CLI reads dependency files locally, then refines repository fit for the stack in front of you. Your source stays on your machine.</p>
               <div className="privacy-row"><span>Local analysis</span><span>Secret filtering</span><span>No auto-execution</span></div>
             </div>
             <div className="terminal-window">

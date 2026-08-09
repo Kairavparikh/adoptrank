@@ -47,7 +47,7 @@ class QwenEmbedder:
                 texts,
                 normalize_embeddings=True,
                 truncate_dim=self.dimension,
-                batch_size=2,
+                batch_size=16,
             ),
             dtype=np.float32,
         )

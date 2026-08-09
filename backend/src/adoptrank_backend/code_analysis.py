@@ -25,6 +25,8 @@ SOURCE_EXTENSIONS = {
     ".cc",
     ".c",
     ".h",
+    ".yml",
+    ".yaml",
 }
 LANGUAGE_BY_EXTENSION = {
     ".py": "python",
@@ -42,6 +44,8 @@ LANGUAGE_BY_EXTENSION = {
     ".cc": "cpp",
     ".c": "c",
     ".h": "c",
+    ".yml": "yaml",
+    ".yaml": "yaml",
 }
 SKIP_PARTS = {"node_modules", "vendor", "dist", "build", ".venv", "venv", "target", "generated"}
 DEPENDENCY_FILES = {

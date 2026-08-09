@@ -1,0 +1,683 @@
+{
+  "task_count": 40,
+  "budget": 8000,
+  "mean_file_recall": 0.8129761904761905,
+  "mean_estimated_context_tokens": 3048.775,
+  "token_reduction": null,
+  "baseline_task_success": null,
+  "adoptrank_task_success": null,
+  "gates": {
+    "file_recall_at_least_0_80": true,
+    "token_reduction_at_least_0_30": false,
+    "task_success_within_0_05": false,
+    "has_controlled_task_results": false
+  },
+  "pivot_approved": false,
+  "results": [
+    {
+      "task_id": "encode/httpx@b5addb64f016",
+      "query": "Adapt test_response_decode_text_using_autodetect for chardet 6.0\n\n# Summary\n\nSee https://github.com/encode/httpx/discussions/3772. Version 6.0.0 of `chardet` detects this byte string as `WINDOWS-1252`, while previous versions detected `ISO-8859-1`. Since both are plausible (the encoded byte string decodes to the same Unicode string under either encoding), this PR adjusts the test to accept either claim.",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "tests/models/test_responses.py",
+        "tests/test_decoders.py",
+        "tests/test_exported_members.py"
+      ],
+      "estimated_context_tokens": 2689,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@ae1b9f66238f",
+      "query": "Expose `FunctionAuth` in `__all__`\n\n# Summary\n\nJust adding `FunctionAuth` to `httpx._auth`'s `__all__` so it can be imported as `httpx.FunctionAuth`.\n\n(Note this just seems to be an omission in https://github.com/encode/httpx/pull/3106)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "httpx/__init__.py",
+        "httpx/_auth.py",
+        "httpx/_client.py",
+        "tests/test_exported_members.py"
+      ],
+      "estimated_context_tokens": 3171,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@435e1dac899a",
+      "query": "Bump actions/setup-python from 5 to 6\n\nBumps [actions/setup-python](https://github.com/actions/setup-python) from 5 to 6.\n\n\n<br />\n\n\n[![Dependabot compatibility score](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=actions/setup-python&package-manager=github_actions&previous-version=5&new-version=6)](https://docs.github.com/en/github/managing-security-vulnerabilities/about-dependabot-security-updates#about-compatibility-scores)\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself. You can also trigger a rebase manually by commenting `@dependabot rebase`.\n\n[//]: # (dependabot-automerge-start)\n[//]: # (dependabot-automerge-end)\n\n---",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/FUNDING.yml",
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "tests/test_main.py"
+      ],
+      "estimated_context_tokens": 1953,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@b55d4635701d",
+      "query": "Upgrade Python type checker mypy\n\n# Summary\n\n\n\nUnblocks #3653 which is currently failing on the command `mypy httpx tests`.\n* #3653\n* https://github.com/python/mypy/tags",
+      "file_recall": 0.3333333333333333,
+      "retrieved_files": [
+        ".github/workflows/test-suite.yml",
+        "httpx/_client.py",
+        "tests/client/test_event_hooks.py",
+        "tests/client/test_properties.py",
+        "tests/client/test_redirects.py",
+        "tests/models/test_queryparams.py",
+        "tests/test_timeouts.py"
+      ],
+      "estimated_context_tokens": 3884,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@4fb9528c2f5a",
+      "query": "Drop Python 3.8 support\n\n# Summary",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "httpx/__version__.py",
+        "httpx/_transports/asgi.py",
+        "mkdocs.yml",
+        "tests/test_main.py"
+      ],
+      "estimated_context_tokens": 2136,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@336204f0121a",
+      "query": "Display proxy protocol scheme on error\n\n# Summary\nThis small PR evaluates `proxy.url.scheme` in the error message.",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/test-suite.yml",
+        "httpx/__init__.py",
+        "httpx/_client.py",
+        "httpx/_exceptions.py",
+        "httpx/_main.py",
+        "httpx/_transports/base.py",
+        "httpx/_transports/default.py",
+        "httpx/_types.py"
+      ],
+      "estimated_context_tokens": 4976,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@c7c13f18a5af",
+      "query": "Add support for Python 3.13\n\n# Summary\n\n\n\nPython 3.13 was released in October:\n\n* https://devguide.python.org/versions/\n* https://peps.python.org/pep-0719/\n\nLet's add it to the CI and classifiers.\n\nPython 3.8 went EOL at the same time, shall we drop support for that too?",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "httpx/__version__.py",
+        "mkdocs.yml",
+        "tests/concurrency.py",
+        "tests/test_main.py"
+      ],
+      "estimated_context_tokens": 2638,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "encode/httpx@26d48e0634e6",
+      "query": "Version 0.28.1\n\n## 0.28.1 (6th December, 2024)\n\n* Fix SSL case where `verify=False` together with client side certificates.\n\n---\n\nRelease draft... (maintainers) https://github.com/encode/httpx/releases/tag/untagged-cd33408902cf0089b895",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/dependabot.yml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/test-suite.yml",
+        "httpx/__init__.py",
+        "httpx/__version__.py",
+        "mkdocs.yml"
+      ],
+      "estimated_context_tokens": 2704,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@0f4738df88e3",
+      "query": "Pre-8.5.0 release changelog and doc fixes\n\n> [!IMPORTANT]\n> **Keep this PR in draft mode** until we are closing in on 8.5.0 release.\n\nA small PR to accumulate all missing documentation details for the upcoming 8.5.0 release.\n\n- Missing changelog entries and references from:\n  - #3637\n  - #3681\n  - #3642\n- Mention of new `custom_version_option` in the docs from #3581\n- Rename of camel-cased test files from #3672\n- Admonition styling\n- `.. versionadded` styling\n- Markdown format\n- Example CLI consistency\n- A rogue type lint\n\nBefore removing the `draft` status, review all changes in the pending release diff: https://github.com/pallets/click/compare/8.4.2...main",
+      "file_recall": 0.4,
+      "retrieved_files": [
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        "src/click/_compat.py",
+        "src/click/termui.py",
+        "src/click/testing.py",
+        "src/click/types.py",
+        "tests/test_utils/test_prompt.py"
+      ],
+      "estimated_context_tokens": 5124,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@0c9e836c7c22",
+      "query": "Update all GitHub actions\n\nThis PR upgrade all GitHub actions, which:\n- Fix the constantly failing `.github/workflows/lock.yaml` workflow (see: https://github.com/pallets/click/actions/runs/29969536487/job/89088309667)\n- Simplify some action configuration (`prune-cache: false` and `packages-dir: \"dist/\"` are now default)\n- Remove unused `id: setup-python`",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/lock.yaml",
+        ".github/workflows/nightly.yaml",
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        ".github/workflows/tests.yaml",
+        ".github/workflows/zizmor.yaml"
+      ],
+      "estimated_context_tokens": 4509,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@10b43c211b82",
+      "query": "Parametrize deprecation tests and check targets\n\nThis PR parametrize similar tests to check:\n- that deprecation warnings are properly triggered in various places of imports\n- and that the right symbol or attribute is properly targeted\n\nThis is a follow up on recent changes from:\n- https://github.com/pallets/click/pull/3695\n-  https://github.com/pallets/click/pull/3704",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/lock.yaml",
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        ".github/workflows/tests.yaml",
+        ".github/workflows/zizmor.yaml",
+        "tests/test_deprecations.py",
+        "tests/test_testing.py"
+      ],
+      "estimated_context_tokens": 4374,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@3b16957cba71",
+      "query": "`click.prompt` typing clarifications / improvements\n\nThis improves the typing of `click.prompt`. However there is still an opening question / issue...\n\n# Brief summary\n\nThe current code makes the following change to the public API of `click.prompt`:\n\n```diff\n def prompt(\n     text: str,\n-    default: t.Any | None = None,\n+    default: V | None = None,\n     hide_input: bool = False,\n     confirmation_prompt: bool | str = False,\n-    type: ParamType[t.Any] | t.Any | None = None,\n-    value_proc: t.Callable[[str], t.Any] | None = None,\n+    type: ParamType[V] | V | None = None,\n+    value_proc: t.Callable[[str], V] | None = None,\n     prompt_suffix: str = \": \",\n     show_default: bool | str = True,\n     err: bool = False,\n     show_choices: bool = True,\n-) -> t.Any:\n+) -> V:\n````\n\nThis changes the behaviour in that you can no longer pass types that aren't the same type as the type you expect at the end. For example:\n\n```python\nclick.prompt(\"Iteration amount?\", default=\"100\", type=int)\n```\n\nWould no longer work under the current implementation because `\"100\"` is not of the type `int`. In the old implementation this worked because default values still were passed as `int(\"100\")` before being returned. The remaining question is then what b",
+      "file_recall": 0.8,
+      "retrieved_files": [
+        "src/click/_termui_impl.py",
+        "src/click/core.py",
+        "src/click/termui.py",
+        "src/click/types.py",
+        "tests/test_context.py",
+        "tests/test_types.py",
+        "tests/test_utils/test_prompt.py",
+        "tests/typing/typing_progressbar.py"
+      ],
+      "estimated_context_tokens": 5278,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@0585f456baa6",
+      "query": "`click.prompt` typing clarifications / improvements\n\nThis improves the typing of `click.prompt`. However there is still an opening question / issue...\n\n# Brief summary\n\nThe current code makes the following change to the public API of `click.prompt`:\n\n```diff\n def prompt(\n     text: str,\n-    default: t.Any | None = None,\n+    default: V | None = None,\n     hide_input: bool = False,\n     confirmation_prompt: bool | str = False,\n-    type: ParamType[t.Any] | t.Any | None = None,\n-    value_proc: t.Callable[[str], t.Any] | None = None,\n+    type: ParamType[V] | V | None = None,\n+    value_proc: t.Callable[[str], V] | None = None,\n     prompt_suffix: str = \": \",\n     show_default: bool | str = True,\n     err: bool = False,\n     show_choices: bool = True,\n-) -> t.Any:\n+) -> V:\n````\n\nThis changes the behaviour in that you can no longer pass types that aren't the same type as the type you expect at the end. For example:\n\n```python\nclick.prompt(\"Iteration amount?\", default=\"100\", type=int)\n```\n\nWould no longer work under the current implementation because `\"100\"` is not of the type `int`. In the old implementation this worked because default values still were passed as `int(\"100\")` before being returned. The remaining question is then what b",
+      "file_recall": 0.6666666666666666,
+      "retrieved_files": [
+        "src/click/_termui_impl.py",
+        "src/click/core.py",
+        "src/click/termui.py",
+        "src/click/types.py",
+        "tests/test_termui.py",
+        "tests/test_utils/test_prompt.py",
+        "tests/typing/typing_progressbar.py"
+      ],
+      "estimated_context_tokens": 5175,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@c2ed41490baa",
+      "query": "Deprecate `isolated_filesystem` and document its limits\n\nThis is an attempt to deprecate `isolated_filesystem` from the `CliRunner`. It has been discussed in #3501.\n\nIn addition to the deprecation, I added some explicit documentation about thread-safety as discussed in #3501. I used our own usage of `pytest-xdist` as a good example to follow.\n\nAll occurrences of `isolated_filesystem` in our own test suite have been removed and we are now relying on Pytest's `tmp_path`.\n\nI also inaugurated the `docs/upgrade-guides.md` section introduced a while ago by @Rowlando13 .\n\nThis PR closes #3700.",
+      "file_recall": 0.7142857142857143,
+      "retrieved_files": [
+        ".github/workflows/lock.yaml",
+        "src/click/testing.py",
+        "tests/test_basic.py",
+        "tests/test_shell_completion.py",
+        "tests/test_testing.py",
+        "tests/test_utils/test_open_file.py",
+        "tests/test_utils/test_prompt.py"
+      ],
+      "estimated_context_tokens": 3176,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@051725fa7e0c",
+      "query": "Mark clearly functions private status. Deprecated Python 2 utilities.\n\nCloses #3099 and #3481",
+      "file_recall": 0.0,
+      "retrieved_files": [
+        ".github/workflows/lock.yaml",
+        ".github/workflows/nightly.yaml",
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        ".github/workflows/tests.yaml",
+        "src/click/types.py",
+        "tests/test_commands.py"
+      ],
+      "estimated_context_tokens": 4268,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "pallets/click@7a0a3447f6dd",
+      "query": "Mark clearly functions private status. Deprecated Python 2 utilities.\n\nCloses #3099 and #3481",
+      "file_recall": 0.1,
+      "retrieved_files": [
+        ".github/workflows/lock.yaml",
+        ".github/workflows/nightly.yaml",
+        ".github/workflows/pre-commit.yaml",
+        ".github/workflows/publish.yaml",
+        ".github/workflows/tests.yaml",
+        "src/click/types.py",
+        "tests/test_commands.py"
+      ],
+      "estimated_context_tokens": 4268,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@8b258c7bb28f",
+      "query": "ci: pin GitHub Actions to full commit SHAs\n\nPin unpinned GitHub Actions to immutable commit SHAs. Defense against supply-chain attacks via mutable tags. Version tags retained as inline comments. See: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/ci.yml",
+        "middleware/recoverer_test.go"
+      ],
+      "estimated_context_tokens": 925,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@caf87e6e1bd9",
+      "query": "feat(mux): support http QUERY method ietf rfc10008\n\nFollow-up to #1129.\n\nUnexports the temporary QUERY method constant: `chi.MethodQuery` \u2192 `methodQuery`.",
+      "file_recall": 0.75,
+      "retrieved_files": [
+        "_examples/custom-method/main.go",
+        "middleware/compress.go",
+        "middleware/recoverer.go",
+        "mux.go",
+        "mux_test.go",
+        "tree.go"
+      ],
+      "estimated_context_tokens": 3994,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@7fcb8a20364d",
+      "query": "middleware: document printPrettyStack and harden NoColor panic test\n\nFollow-up to #1050, which fixed the core regression from #1042 (`defaultLogEntry.Panic()` ignored `DefaultLogFormatter.NoColor` because `PrintPrettyStack` hardcodes `useColor = true`).\n\nThis carries over the two remaining pieces from the other PRs on that issue, on top of the merged fix:\n\n- **Doc comment** on the unexported `printPrettyStack`, explaining the `useColor` behavior (from #1086).\n- **Hardened `TestRecovererNoColor`**: force `IsTTY = true` (saved/restored) so `cW` would emit ANSI codes if `useColor` were true. Without this the assertion is a no-op on non-TTY runners (e.g. CI) and passes even against the buggy code path \u2014 verified it fails when the bug is reintroduced. (from #1061)\n\nIt preserves @alliasgher's original #1086 commits via a merge commit so authorship is retained.\n\nSupersedes #1041, #1061, #1086.\n\nFixes #1042.",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/ci.yml",
+        "_examples/graceful/main.go",
+        "middleware/compress.go",
+        "middleware/logger.go",
+        "middleware/recoverer.go",
+        "middleware/recoverer_test.go",
+        "middleware/terminal.go"
+      ],
+      "estimated_context_tokens": 4414,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@878fe71fc9e5",
+      "query": "Fix defaultLogEntry.Panic not respecting NoColor setting\n\n`defaultLogEntry.Panic()` calls `PrintPrettyStack()` which hardcodes\n`useColor = true`, ignoring the `NoColor` field on `DefaultLogFormatter`.\n\nThis threads the `useColor` flag from `defaultLogEntry` through to\n`prettyStack.parse()`. The public `PrintPrettyStack` function keeps its\nexisting behavior (always colored).\n\nFixes #1042",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/ci.yml",
+        "middleware/compress.go",
+        "middleware/logger.go",
+        "middleware/recoverer.go",
+        "middleware/recoverer_test.go",
+        "middleware/terminal.go"
+      ],
+      "estimated_context_tokens": 4152,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@d7b767bcbea5",
+      "query": "feat(middleware): add text/xml and application/xml to default compressible types (#1127)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "middleware/compress.go",
+        "middleware/compress_test.go",
+        "middleware/content_encoding.go",
+        "middleware/recoverer.go",
+        "middleware/terminal.go",
+        "middleware/wrap_writer.go"
+      ],
+      "estimated_context_tokens": 4270,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@2b9fca258f92",
+      "query": "Honor Discard() in httpFancyWriter.ReadFrom (#1110)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "middleware/middleware_test.go",
+        "middleware/recoverer.go",
+        "middleware/recoverer_test.go",
+        "middleware/terminal.go",
+        "middleware/wrap_writer.go",
+        "middleware/wrap_writer_test.go"
+      ],
+      "estimated_context_tokens": 3560,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@3b171578ca44",
+      "query": "feat: middleware.ClientIP, a replacement for middleware.RealIP (#967)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "middleware/compress.go",
+        "middleware/logger.go",
+        "middleware/realip.go",
+        "middleware/realip_test.go",
+        "middleware/recoverer.go",
+        "middleware/recoverer_test.go",
+        "middleware/route_headers.go",
+        "middleware/terminal.go"
+      ],
+      "estimated_context_tokens": 3215,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "go-chi/chi@818fdcfc4786",
+      "query": "fix: set Request.Pattern from RoutePattern() (#1097)",
+      "file_recall": 0.5,
+      "retrieved_files": [
+        "middleware/compress.go",
+        "middleware/content_type.go",
+        "middleware/middleware_test.go",
+        "middleware/recoverer.go",
+        "middleware/wrap_writer.go",
+        "mux.go"
+      ],
+      "estimated_context_tokens": 2843,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@020687a77d13",
+      "query": "ignore,globset: increase pool capacity",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "crates/ignore/examples/walk.rs",
+        "crates/ignore/src/gitignore.rs",
+        "crates/ignore/src/lib.rs",
+        "crates/ignore/src/types.rs",
+        "crates/ignore/src/walk.rs",
+        "crates/ignore/tests/gitignore_matched_path_or_any_parents_tests.rs"
+      ],
+      "estimated_context_tokens": 2465,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@435f59fc4b43",
+      "query": "ignore: skip loading unreachable ignore files",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "crates/core/flags/hiargs.rs",
+        "crates/ignore/examples/walk.rs",
+        "crates/ignore/src/lib.rs",
+        "crates/ignore/src/walk.rs",
+        "crates/ignore/tests/gitignore_matched_path_or_any_parents_tests.rs"
+      ],
+      "estimated_context_tokens": 2500,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@dffd776a737d",
+      "query": "ci: attest build provenance for release archives",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/release.yml",
+        "tests/util.rs"
+      ],
+      "estimated_context_tokens": 655,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@8372866810a1",
+      "query": "index: add some initial indexing scaffolding",
+      "file_recall": 0.6,
+      "retrieved_files": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/main.rs",
+        "tests/index/disallowed.rs",
+        "tests/index/mod.rs"
+      ],
+      "estimated_context_tokens": 2131,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@d99ac34406f8",
+      "query": "core: add `index` module",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "crates/core/flags/hiargs.rs",
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/mod.rs",
+        "crates/core/main.rs",
+        "tests/index/disallowed.rs"
+      ],
+      "estimated_context_tokens": 1793,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@2ed0c006fee4",
+      "query": "flags: disable many flags when indexing is enabled",
+      "file_recall": 0.6666666666666666,
+      "retrieved_files": [
+        "crates/core/flags/defs.rs",
+        "crates/core/flags/doc/help.rs",
+        "crates/core/flags/doc/man.rs",
+        "crates/core/flags/hiargs.rs",
+        "crates/core/flags/mod.rs",
+        "crates/core/logger.rs",
+        "crates/core/main.rs"
+      ],
+      "estimated_context_tokens": 3219,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@d958105d412b",
+      "query": "cargo: add new build-time `unstable-index` feature",
+      "file_recall": 0.5714285714285714,
+      "retrieved_files": [
+        ".github/workflows/ci.yml",
+        "crates/core/flags/defs.rs",
+        "crates/core/flags/lowargs.rs",
+        "crates/core/main.rs",
+        "crates/printer/src/util.rs",
+        "tests/json.rs"
+      ],
+      "estimated_context_tokens": 2127,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "BurntSushi/ripgrep@b621e65b4fc8",
+      "query": "ignore: add incremental checking",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "crates/core/flags/hiargs.rs",
+        "crates/ignore/examples/walk.rs",
+        "crates/ignore/src/dir.rs",
+        "crates/ignore/src/lib.rs",
+        "crates/ignore/src/walk.rs",
+        "crates/ignore/tests/gitignore_matched_path_or_any_parents_tests.rs"
+      ],
+      "estimated_context_tokens": 1671,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@ef37eb2f372d",
+      "query": "Fix detached limit.map calls (#108)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 2179,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@8907801ffa02",
+      "query": "Add `rejectOnClear` option",
+      "file_recall": 0.75,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts"
+      ],
+      "estimated_context_tokens": 2114,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@ce9d71cf1391",
+      "query": "Add test for shared context provider pattern",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        ".github/workflows/main.yml",
+        "index.d.ts",
+        "index.js",
+        "scripts/benchmarker.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 2775,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@24503f921c97",
+      "query": "Document recursive limiter deadlocks",
+      "file_recall": 0.0,
+      "retrieved_files": [],
+      "estimated_context_tokens": 105,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@870db0f54785",
+      "query": "Support options object in `pLimit()`",
+      "file_recall": 0.6666666666666666,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "scripts/benchmarker.js"
+      ],
+      "estimated_context_tokens": 2074,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@1fb1407cb390",
+      "query": "Fix benchmarks",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "benchmark.js",
+        "scripts/benchmarker.js"
+      ],
+      "estimated_context_tokens": 840,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@d76231b44ec6",
+      "query": "Make `.map()` method accept an iterable, not just array (#98)",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts",
+        "test.js"
+      ],
+      "estimated_context_tokens": 3370,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    },
+    {
+      "task_id": "sindresorhus/p-limit@9da5934aaf15",
+      "query": "Use native Node.js timers instead of delay package in tests",
+      "file_recall": 1.0,
+      "retrieved_files": [
+        "index.d.ts",
+        "index.js",
+        "index.test-d.ts",
+        "scripts/benchmarker.js",
+        "test.js"
+      ],
+      "estimated_context_tokens": 4237,
+      "baseline_repository_tokens": null,
+      "baseline_task_success": null,
+      "adoptrank_task_success": null
+    }
+  ],
+  "limitations": [
+    "Token counts are estimates until Claude telemetry supplies provider-reported usage.",
+    "Task-success fields must come from controlled Claude Code runs; this harness does not invent them."
+  ]
+}

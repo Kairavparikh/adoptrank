@@ -8,3 +8,34 @@ data quality observability
 stream processing framework
 forecasting library language:python
 fraud detection machine learning
+# Systems and developer infrastructure
+language:rust distributed systems
+language:go cloud native observability
+language:c++ low latency systems
+language:java stream processing
+language:typescript developer tools
+language:typescript ai coding agent
+database replication consensus
+workflow orchestration data platform
+data lakehouse open source
+feature flag platform
+api gateway rate limiting
+authentication authorization library
+# AI and ML implementation repos
+llm inference serving
+retrieval augmented generation framework
+model evaluation observability
+mlops experiment tracking
+computer vision inference
+reinforcement learning library
+time series foundation model
+graph neural network
+# Financial, security, and product engineering
+payment processing sdk
+expense management fintech
+fraud prevention risk engine
+cryptocurrency exchange matching engine
+security vulnerability scanner
+privacy preserving machine learning
+customer support automation
+real time collaboration editor

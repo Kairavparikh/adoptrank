@@ -229,6 +229,19 @@ The response includes a model version, data watermark, and ranked results with d
 - Context-aware search API.
 - VS Code extension using the same contracts.
 
+### M4 — Scalable systems implementation
+
+- Add Rust workers for high-throughput GitHub polling, repository cloning, diff processing, Tree-sitter
+  coordination, and queue consumption. The initial `rust/adoptrank-ingest` worker now emits the shared
+  replayable event contract in shadow mode; cloning, diffs, parsing coordination, and queue consumers
+  remain gated on demonstrated parity and throughput need.
+- Add Spark Structured Streaming and batch jobs for historical commit timelines, training examples,
+  feature generation, and adoption backtests. The initial Spark feature materialization and future-only
+  backtest jobs now consume the same event contract; production orchestration and Delta storage remain
+  future work.
+- Run Rust/Spark in shadow mode against the Python reference and require matching counts, checksums,
+  feature values, and failure rates before shifting production traffic.
+
 ### M4 — Robust adoption prediction
 
 - Repeated real observations and point-in-time feature store.
