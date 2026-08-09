@@ -3,10 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("ships the AdoptRank product contract", async () => {
-  const [page, layout, searchRoute, leaderboard, leaderboardRoute, cli] = await Promise.all([
+  const [page, layout, searchRoute, projectReferenceRoute, leaderboard, leaderboardRoute, cli] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/search/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/project-reference/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/Leaderboard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/leaderboard/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../backend/src/adoptrank_backend/cli.py", import.meta.url), "utf8"),
@@ -22,6 +23,9 @@ test("ships the AdoptRank product contract", async () => {
   assert.match(searchRoute, /pytorch/);
   assert.match(searchRoute, /export async function POST/);
   assert.match(searchRoute, /project_context/);
+  assert.match(projectReferenceRoute, /public GitHub repository/i);
+  assert.match(projectReferenceRoute, /project_context/);
+  assert.match(page, /For my project/);
   assert.match(leaderboard, /GitHub username or organization/);
   assert.match(leaderboard, /Measure adoption over/);
   assert.match(leaderboardRoute, /leaderboard_repositories/);

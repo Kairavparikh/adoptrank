@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import Leaderboard from "./components/Leaderboard";
+import ProjectReferences from "./components/ProjectReferences";
 
 type Repo = {
   id: string;
@@ -175,7 +176,7 @@ function MiniChart({ values }: { values: number[] }) {
 export default function Home() {
   const [query, setQuery] = useState("Bitcoin anomaly detection in Python");
   const [activeQuery, setActiveQuery] = useState("Bitcoin anomaly detection in Python");
-  const [view, setView] = useState<"leaderboard" | "search" | "method" | "compare">("leaderboard");
+  const [view, setView] = useState<"leaderboard" | "search" | "project" | "method" | "compare">("leaderboard");
   const [selected, setSelected] = useState<string>(repositories[0].id);
   const [compared, setCompared] = useState<string[]>([]);
   const [serverOrder, setServerOrder] = useState<string[]>([]);
@@ -294,12 +295,14 @@ export default function Home() {
         <div className="nav-tabs">
           <button className={view === "leaderboard" ? "active" : ""} onClick={() => setView("leaderboard")}>Leaderboard</button>
           <button className={view === "search" ? "active" : ""} onClick={() => setView("search")}>Search</button>
+          <button className={view === "project" ? "active" : ""} onClick={() => setView("project")}>For my project</button>
           <button className={view === "method" ? "active" : ""} onClick={() => setView("method")}>How it works</button>
         </div>
         <a className="cli-pill" href="#terminal"><span className="status-dot" /> CLI preview</a>
       </nav>
 
       {view === "leaderboard" && <Leaderboard />}
+      {view === "project" && <ProjectReferences />}
 
       {view === "search" && (
         <>

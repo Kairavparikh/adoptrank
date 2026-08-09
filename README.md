@@ -7,6 +7,7 @@ The maintained product specification is in [docs/PRD.md](docs/PRD.md).
 ## Current vertical slice
 
 - Natural-language repository search
+- Project-aware feature-reference search for public GitHub repositories
 - Live overall and per-owner leaderboards with adoption windows and rank movement
 - Evidence panel with code paths and adoption signals
 - Emerging, Durable, and Hidden Gem discovery views
@@ -61,6 +62,7 @@ Then search from any project or inspect the live leaderboard:
 ```bash
 cd your-project
 adoptrank find "a streaming anomaly detector that fits this codebase"
+adoptrank find "add Stripe webhook retries" --path .
 adoptrank leaderboard --language Python --sort momentum
 adoptrank leaderboard --owner openai --window 7
 ```
