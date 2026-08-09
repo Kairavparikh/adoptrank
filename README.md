@@ -3,8 +3,6 @@
 AdoptRank finds open-source repositories that fit a developer's actual project. It combines functional relevance, sustained adoption, code evidence, and compatibility instead of ranking by stars alone.
 
 The maintained product specification is in [docs/PRD.md](docs/PRD.md).
-The stage-gated coding-agent context experiment is specified in
-[docs/CONTEXT_ENGINE_PIVOT.md](docs/CONTEXT_ENGINE_PIVOT.md).
 
 ## Current vertical slice
 
@@ -58,7 +56,7 @@ pipx install adoptrank
 The GitHub source-install fallback is
 `pipx install "git+https://github.com/Kairavparikh/adoptrank.git#subdirectory=backend"`.
 
-Then run contextual search from any project or inspect the live leaderboard:
+Then search from any project or inspect the live leaderboard:
 
 ```bash
 cd your-project
@@ -67,114 +65,10 @@ adoptrank leaderboard --language Python --sort momentum
 adoptrank leaderboard --owner openai --window 7
 ```
 
-The experimental context selector builds a bounded local/GitHub evidence pack
-for a coding task:
-
-```bash
-adoptrank context "add idempotent Stripe webhook retries" --budget 8000
-adoptrank context "add idempotent Stripe webhook retries" --budget 8000 --json
-```
-
-This command guarantees only its documented estimated-token budget. It does not
-yet claim lower Claude billing or task-level token usage; those claims require the
-controlled benchmark described in the pivot document.
-
-Generate retrieval tasks from real Git history without changing the working tree:
-
-```bash
-adoptrank generate-context-tasks --repo . --output /tmp/context-tasks.jsonl --limit 50
-adoptrank benchmark-context --tasks /tmp/context-tasks.jsonl --output /tmp/retrieval-report.json
-adoptrank context-dataset --tasks /tmp/context-tasks.jsonl --output /tmp/context-pairs.jsonl
-```
-
-Prepare the reproducible five-repository public benchmark, then compare lexical,
-pretrained-Qwen, and task-trained retrieval:
-
-```bash
-adoptrank prepare-context-benchmark \
-  --manifest backend/benchmarks/public_repositories.json \
-  --cache backend/benchmarks/repos \
-  --output backend/benchmarks/public_context_tasks.jsonl
-adoptrank benchmark-context \
-  --tasks backend/benchmarks/public_context_tasks.jsonl \
-  --output /tmp/lexical.json
-adoptrank benchmark-context \
-  --tasks backend/benchmarks/public_context_tasks.jsonl \
-  --output /tmp/trained.json --trained-context-rerank
-```
-
-`context-dataset` turns historical changed files into positives and selects
-similar untouched files as hard negatives. The optional ML installation can
-train the Qwen/PyTorch value-per-token model with `adoptrank train-context`;
-full Qwen training is intended for the Modal GPU job, not the lightweight CLI.
-
-The capped Claude A/B runner is opt-in because it makes paid model calls. A checked
-in smoke task can be run from the repository root after Claude Console authentication:
-
-```bash
-adoptrank run-claude-benchmark \
-  --tasks backend/benchmarks/claude_smoke.jsonl \
-  --output /tmp/claude-ab-report.json \
-  --condition both --max-tasks 1 --max-budget-usd 0.25
-```
-
-For the final decision benchmark, use at least 30 unique tasks and repeat each
-condition to measure variance. Repetitions do not count as additional tasks:
-
-```bash
-adoptrank run-claude-benchmark \
-  --tasks /path/to/30-plus-verified-tasks.jsonl \
-  --output /tmp/claude-ab-final.json \
-  --condition both --max-tasks 30 --repetitions 2 --max-budget-usd 0.15 \
-  --trained-context-rerank
-```
-
-The runner atomically checkpoints after every condition. If a provider,
-network, or local interruption stops a paid benchmark, resume without
-repeating completed calls:
-
-```bash
-adoptrank run-claude-benchmark \
-  --tasks /path/to/30-plus-verified-tasks.jsonl \
-  --output /tmp/claude-ab-final.json \
-  --condition both --max-tasks 30 --repetitions 1 --max-budget-usd 0.15 \
-  --trained-context-rerank --resume
-```
-
-That command authorizes at most $18 because it runs two conditions twice for
-30 tasks. Use one repetition for a $9 maximum first; the runner prints the
-maximum authorized cost before returning.
-
-The scanner sends only bounded structured context—languages, dependencies,
-frameworks, and symbols. It skips ignored paths, dependency/build directories,
-known credential files, and files matching secret patterns. Use
-`adoptrank find "..." --dry-run` to inspect the exact payload before sending it.
-
-## Claude Code context mode
-
-`adoptrank claude` starts Claude Code with a bounded, inspectable context pack.
-It is designed to reduce repeated orientation work, not to promise lower total
-provider usage: Claude can still read additional files after launch.
-
-```bash
-# Inspect the exact launch without contacting Claude or the ranking API.
-adoptrank claude "Add idempotent payment retries" --path . \
-  --budget 8000 --no-external --dry-run
-
-# Interactive Claude Code with local context plus optional public code evidence.
-adoptrank claude "Add idempotent payment retries" --path . --budget 8000
-
-# A bounded non-interactive run. Claude Code enforces this dollar cap only in
-# print mode; it is not a replacement for the context-token budget.
-adoptrank claude "Add idempotent payment retries" --path . --budget 8000 \
-  --print --max-budget-usd 0.25
-```
-
-Each launch records only metadata in `.adoptrank/claude-runs/`: the context
-hash, token estimate, selected paths, external repository names, route, and
-exit code. `--print` additionally records provider usage and later file-read
-paths/tool-call counts, never tool output. It does not write source excerpts
-or secrets to the audit file.
+The local scanner reads languages, dependencies, frameworks, and symbols to
+improve project compatibility. It skips ignored paths, dependency/build
+directories, known credential files, and files matching secret patterns. Use
+`adoptrank find "..." --dry-run` to inspect the exact search payload.
 
 The public deployment at <https://adoptrank.vercel.app> is connected to the
 checked-in Modal GPU service and returns Qwen/PyTorch rankings. The backend also

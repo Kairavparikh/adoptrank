@@ -405,8 +405,8 @@ export default function Home() {
           <section className="terminal-section" id="terminal">
             <div className="terminal-copy">
               <span className="section-kicker light">Built for where you work</span>
-              <h2>One search.<br />Your project’s context.</h2>
-              <p>The CLI reads dependency files and runtime metadata locally, then reranks results for the codebase in front of you. Your source stays on your machine.</p>
+              <h2>One search.<br />Evidence for your stack.</h2>
+              <p>The CLI reads dependency files locally, then refines repository fit for the stack in front of you. Your source stays on your machine.</p>
               <div className="privacy-row"><span>Local analysis</span><span>Secret filtering</span><span>No auto-execution</span></div>
             </div>
             <div className="terminal-window">
